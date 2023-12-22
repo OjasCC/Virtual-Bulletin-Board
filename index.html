@@ -1,0 +1,5348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Bulletin Board</title>
+    <style>
+        :root {
+
+            --uni_color: rgb(173, 173, 173);
+            --uni_hover_color: rgb(75, 75, 75);
+
+            --gear_radius: 1.5rem;
+            --gear_color: rgb(173, 173, 173);
+            --gear_color_hover: rgb(151, 151, 151);
+            --gear_thickness: 0.5rem;
+            --gear_pin_length: 0.4rem;
+            --gear_pin_gap: -0.1rem;
+
+            --option_height: 4rem;
+
+            --lock_color: rgb(173, 173, 173);
+            --lock_color_hover: rgb(151, 151, 151);
+            --locked_color: rgb(53, 53, 53);
+            --lock_hook_height: 0.4rem;
+            --lock_hook_width: 0.7rem;
+            --lock_hook_thickness: 0.3rem;
+            --lock_box_width: 1.5rem;
+            --lock_box_height: 1.25rem;
+
+
+            --ham-width: 3rem;
+            --hamline-height: 0.3rem;
+            --hamline-width: 1.8rem;
+            --hamline-color: rgb(173, 173, 173);
+            --hamline-border: 0.1rem;
+            --hamline-padding: 0.7rem;
+
+
+            --move_time: 1000ms;
+
+
+            --pencil_thickness: 0.30rem;
+            --pencil_handle_height: 1.1rem;
+            --pencil_eraser_height: 0.3rem;
+            --pencil_gap: 0.4rem;
+
+
+            --active_height: 1.5rem;
+            --active_width: 1.5rem;
+            --active_thickness: 0.15rem;
+            --active_color: white;
+
+
+            --pin_needle_thickness: 0.22rem;
+            --pin_needle_height: 0.9rem;
+            --pin_needle_blunt: 0.15rem;
+            --pin_diameter: 1rem;
+            --pin_inner_diameter: 0.5rem;
+
+
+            --profile_icon_height: 1.4rem;
+            --profile_icon_width: 1.5rem;
+            --profile_icon_thickness: 0.2rem;
+
+
+            --note_icon_height: 1.4rem;
+            --note_icon_width: 1.5rem;
+            --note_icon_thickness: 0.2rem;
+
+        }
+
+
+        html {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: #a2a2a2;
+            margin: 0;
+            font-family: sans-serif;
+            user-select: none;
+        }
+
+        tspan {
+            font-family: monospace;
+        }
+
+        .DB-dragging {
+            cursor: grabbing;
+        }
+
+        #DB-loading {
+            position: fixed;
+            z-index: 4;
+            height: 100%;
+            width: 100%;
+        }
+
+        #DB-inner_loading {
+            height: 5rem;
+            width: 10rem;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+        }
+
+        .hide_loading {
+            visibility: hidden;
+        }
+
+        /*** Options bar ***/
+        #DB-options {
+            position: fixed;
+            z-index: 3;
+            cursor: default;
+            height: var(--option_height);
+            width: 100%;
+            background: linear-gradient(#fcfcfc, #eaeaea);
+            box-shadow: rgb(0 0 0 / 15%) 0px 3px 3px 0px;
+        }
+
+        /* settings btn */
+        .DB-gear {
+            /* transform: translate(var(--gear_pin_length), var(--gear_pin_length)); */
+            height: var(--gear_radius);
+            width: var(--gear_radius);
+            border-radius: 50%;
+            border: var(--gear_color) var(--gear_thickness) solid;
+            box-sizing: border-box;
+            display: inline-block;
+
+            position: absolute;
+            top: 50%;
+            left: 2rem;
+            transform: translate(-50%, -50%);
+        }
+
+        .DB-gear:hover {
+            cursor: pointer;
+        }
+
+        .DB-gear:before,
+        .DB-gear:after,
+        .DB-gear div {
+            position: absolute;
+            content: "";
+            display: block;
+            height: var(--gear_pin_length);
+            width: var(--gear_thickness);
+            left: 50%;
+            top: 50%;
+            box-shadow: 0 calc(var(--gear_radius) / 2 + var(--gear_pin_length) /2 + var(--gear_pin_gap)) 0 0 var(--gear_color), 0 calc(-1 * var(--gear_radius) / 2 - var(--gear_pin_length) / 2 - var(--gear_pin_gap)) 0 0 var(--gear_color);
+        }
+
+        .DB-gear:before {
+            transform: translate(-50%, -50%) rotate(60deg);
+        }
+
+        .DB-gear:after {
+            transform: translate(-50%, -50%) rotate(-60deg);
+        }
+
+        .DB-gear div {
+            transform: translate(-50%, -50%);
+        }
+
+
+        #DB-title {
+            font-size: 140%;
+            color: rgb(77, 77, 77);
+            font-weight: bold;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            top: 50%;
+            left: 50%;
+            pointer-events: none;
+            user-select: none;
+            width: calc(100% - 18rem);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+
+        /* lock btn */
+        .DB-lock_icon {
+            padding-top: 0.4rem;
+            height: 3rem;
+            width: 3rem;
+            align-self: center;
+            box-sizing: border-box;
+            position: absolute;
+            right: 4.5rem;
+            top: 50%;
+            transform: translate(0, -50%);
+        }
+
+        .DB-lock_icon:hover {
+            cursor: pointer;
+        }
+
+        .DB-lock_icon::before {
+            /* hook */
+            content: "";
+            position: relative;
+            display: block;
+            height: var(--lock_hook_height);
+            width: var(--lock_hook_width);
+            left: 50%;
+            transform: translate(-50%, 0);
+            border: var(--lock_hook_thickness) solid var(--lock_color);
+            border-top-right-radius: 50%;
+            border-top-left-radius: 50%;
+            border-bottom: transparent;
+        }
+
+        .DB-lock_icon::after {
+            /* body */
+            content: "";
+            display: block;
+            position: relative;
+            height: var(--lock_box_height);
+            width: var(--lock_box_width);
+            border-radius: 0.1rem;
+            background-color: var(--lock_color);
+            left: 50%;
+            transform: translate(-50%, 0);
+        }
+
+        .DB-lock_icon:hover:after {
+            cursor: pointer;
+            background-color: var(--lock_color_hover);
+        }
+
+        .DB-lock_icon:hover:before {
+            cursor: pointer;
+            border-color: var(--lock_color_hover);
+        }
+
+
+        /* catalogue btn */
+        .DB-hamburger {
+            cursor: pointer;
+            position: absolute;
+            width: var(--ham-width);
+            height: var(--ham-width);
+            right: 0.5rem;
+            top: 50%;
+            transform: translate(0, -50%);
+        }
+
+        .DB-hamburger::before {
+            content: "";
+            position: absolute;
+            width: var(--hamline-width);
+            height: var(--hamline-height);
+            background-color: var(--hamline-color);
+            border-radius: var(--hamline-border);
+            transition: transform 0.25s, width 0.25s ease-in-out;
+            left: 50%;
+            transform: translate(-50%, var(--hamline-padding));
+        }
+
+        .DB-hamburger::after {
+            content: "";
+            position: absolute;
+            width: var(--hamline-width);
+            height: var(--hamline-height);
+            background-color: var(--hamline-color);
+            border-radius: var(--hamline-border);
+            left: 50%;
+            top: 100%;
+            transform: translate(-50%, calc(-100% - var(--hamline-padding)));
+            transition: transform 0.25s, width 0.25s ease-in-out;
+        }
+
+        .DB-hamline::before {
+            content: "";
+            pointer-events: none;
+            position: absolute;
+            background-color: var(--hamline-color);
+            width: var(--hamline-width);
+            height: var(--hamline-height);
+            border-radius: var(--hamline-border);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: transform 0.25s, width 0.25s ease-in-out;
+        }
+
+        .DB-hamline::after {
+            content: "";
+            pointer-events: none;
+            position: absolute;
+            width: var(--hamline-width);
+            height: var(--hamline-height);
+            background-color: var(--hamline-color);
+            border-radius: var(--hamline-border);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: transform 0.25s, width 0.25s ease-in-out;
+        }
+
+        .DB-closedham::before,
+        .DB-closedham::after {
+            width: 0;
+        }
+
+        .DB-closedham .DB-hamline::before {
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+
+        .DB-closedham .DB-hamline::after {
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+
+        /*** catalogue menu ***/
+        #DB-catalogue {
+            cursor: default;
+            background-color: rgb(80 80 80);
+            height: calc(100% - var(--option_height));
+            width: 25rem;
+            overflow: hidden;
+            position: fixed;
+            top: var(--option_height);
+            right: 0;
+            z-index: 4;
+            transition: transform 0.25s, width 0.25s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            box-shadow: rgb(0 0 0 / 25%) -3px 3px 3px;
+
+        }
+
+        #DB-catalogue-vis {
+            height: 5rem;
+            width: 100%;
+            position: relative;
+            display: grid;
+            flex-direction: row;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-template-rows: 1fr;
+            align-items: center;
+            justify-items: center;
+        }
+
+        #DB-catalogue-vis div {
+            cursor: pointer;
+            left: 0;
+            top: 0;
+            transform: translate(0, 0);
+            filter: brightness(45%)
+        }
+
+        .DB-vis-frame #DB-catalogue-vis .DB-frame_icon,
+        .DB-vis-profile #DB-catalogue-vis .DB-profile_icon,
+        .DB-vis-note #DB-catalogue-vis .DB-note_icon,
+        .DB-vis-pin #DB-catalogue-vis .DB-pin_icon {
+            filter: brightness(100%);
+        }
+
+        .DB-vis-frame #DB-cat-list .DB-cat-frame,
+        .DB-vis-profile #DB-cat-list .DB-cat-profile,
+        .DB-vis-note #DB-cat-list .DB-cat-note,
+        .DB-vis-pin #DB-cat-list .DB-cat-pin {
+            visibility: visible;
+            height: 5rem;
+            width: 100%;
+        }
+
+        #DB-cat-list {
+            flex: 1;
+            background-color: white;
+            overflow-y: auto;
+        }
+
+        #DB-catalogue.DB-closed {
+            box-shadow: none;
+            transform: translate(100%, 0);
+        }
+
+        .DB-cat-thing {
+            height: 0;
+            width: 0;
+            visibility: hidden;
+            /* overflow: hidden; */
+            background-color: white;
+            position: relative;
+        }
+
+        .DB-cat-thing::before {
+            content: "";
+            display: block;
+            border-top: 1px solid var(--uni_color);
+            width: calc(100% - 1rem);
+            margin: auto;
+            position: relative;
+            top: calc(100% - 1px);
+        }
+
+        .DB-cat-thing:last-of-type::before {
+            height: 100%;
+            /* position: absolute; */
+        }
+
+        .DB-cat-thing .DB-frame_icon {
+            border-color: var(--uni_color);
+            left: 0;
+            transform: translate(0, -50%);
+            margin-left: 1rem;
+            position: absolute;
+            cursor: pointer;
+        }
+
+        .DB-cat-thing .DB-profile_icon {
+            border-color: var(--uni_color);
+            left: 0;
+            transform: translate(0, -50%);
+            margin-left: 1rem;
+            position: absolute;
+            cursor: pointer;
+        }
+
+        .DB-cat-thing .DB-profile_icon::after {
+            content: "";
+            border-color: var(--uni_color);
+        }
+
+        .DB-cat-thing .DB-pin_icon {
+            left: 0;
+            transform: translate(0, -50%);
+            padding-top: 0.4rem;
+            margin-left: 0.75rem;
+            cursor: pointer;
+            position: absolute;
+        }
+
+        .DB-cat-thing .DB-pin_icon::before,
+        .DB-cat-thing .DB-pin_icon::after {
+            background-color: var(--uni_color);
+        }
+
+        .DB-cat-thing .DB-note_icon {
+            left: 0;
+            margin-left: 2rem;
+            border-color: var(--uni_color);
+            cursor: pointer;
+            position: absolute;
+        }
+
+        .DB-cat-thing .DB-note_icon::after {
+            background-color: var(--uni_color);
+            box-shadow: 0 calc(var(--note_icon_thickness) * 2) var(--uni_color), 0 calc(var(--note_icon_thickness) * -2) var(--uni_color);
+        }
+
+        .DB-cat-thing::after {
+            content: attr(data-value);
+            font-family: monospace;
+            position: absolute;
+            top: 50%;
+            transform: translate(0, -50%);
+            display: -webkit-box;
+            max-width: 17rem;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            margin-left: 4.5rem;
+            font-weight: bold;
+            color: rgb(80 80 80);
+            overflow: hidden;
+
+        }
+
+        .DB-cat-thing .DB-pencil_icon {
+            left: calc(100% - 1rem);
+            top: 50%;
+            transform: translate(-100%, calc(-50% - 0.1rem));
+            cursor: default;
+            position: absolute;
+        }
+
+
+        .DB-screen_hidden {
+            visibility: hidden;
+        }
+
+
+        /*** settings ***/
+        #DB-setting_screen {
+            cursor: default;
+            position: fixed;
+            height: 100%;
+            width: 100%;
+            z-index: 4;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        #DB-setting_wrapper {
+            display: flex;
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 0.1rem solid white;
+            background-color: white;
+            border-radius: 0.5rem;
+            height: 80%;
+            width: 80%;
+            overflow: hidden;
+            max-width: 60rem;
+        }
+
+        #DB-setting_sidebar {
+            height: 100%;
+            width: 20%;
+            /* border-right: solid var(--uni_color) 0.1rem; */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .DB-setting_option {
+            user-select: none;
+            height: 3rem;
+            width: 100%;
+            color: rgb(122, 122, 122);
+            border-bottom: solid 0.1rem var(--uni_color);
+            border-right: solid 0.1rem var(--uni_color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            white-space: nowrap;
+            overflow: hidden;
+            box-sizing: border-box;
+            padding: 0 1rem;
+            white-space: pre-wrap;
+            text-align: center;
+        }
+
+        .DB-setting_option:hover {
+            color: black;
+            cursor: pointer;
+        }
+
+        #DB-setting_filler {
+            flex: 1;
+            border-right: solid 0.1rem var(--uni_color);
+        }
+
+        .DB-setting_bottom_option {
+            border-top: solid 0.1rem var(--uni_color);
+            border-bottom: none;
+        }
+
+        #DB-setting_main {
+            flex: 1;
+            position: relative;
+        }
+
+        .DB-setting_profile_active {
+            visibility: inherit;
+            position: relative;
+
+        }
+
+        #DB-setting_project {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr;
+            grid-template-rows: 3rem 4rem 4rem 4rem 1fr;
+            height: 100%;
+            position: absolute;
+            width: 100%;
+
+        }
+
+        #DB-title_input {
+            grid-column: 2;
+            grid-row: 2;
+            width: 70%;
+            height: 1.5rem;
+            align-self: center;
+            padding-left: 0.5rem;
+            max-width: 13rem;
+        }
+
+        #DB-frame_outline {
+            grid-column: 2;
+            grid-row: 3;
+            width: 70%;
+            height: 1.5rem;
+            align-self: center;
+            padding-left: 0.5rem;
+            max-width: 10rem;
+            background-color: white;
+            border: solid 1px gray;
+            border-radius: 3px;
+            height: 1.7rem;
+        }
+
+        #DB-deselect_join {
+            grid-column: 2;
+            grid-row: 4;
+            width: 70%;
+            height: 1.5rem;
+            align-self: center;
+            padding-left: 0.5rem;
+            max-width: 10rem;
+            background-color: white;
+            border: solid 1px gray;
+            border-radius: 3px;
+            height: 1.7rem;
+        }
+
+        #DB-change_curr_origin {
+            grid-row: 5;
+            grid-column: 1 /span 2;
+            height: 2rem;
+            width: min-content;
+            justify-self: center;
+            margin-bottom: 1rem;
+            align-self: end;
+            cursor: pointer;
+            background-color: white;
+            border: solid 1px gray;
+            border-radius: 3px;
+            color: #4f4f4f;
+            font-weight: bold;
+            padding: 0.5rem;
+        }
+
+        #DB-setting_custom_css {
+            width: 100%;
+            position: absolute;
+            display: grid;
+            grid-template-rows: 1fr min-content;
+            height: 100%;
+            white-space: pre;
+        }
+
+        #DB-custom_css {
+            width: calc(100% - 3rem);
+            justify-self: center;
+            align-self: end;
+            height: calc(100% - 2rem);
+            resize: none;
+            white-space: pre;
+            overflow-y: scroll;
+            overflow-x: scroll;
+            padding: 0.3rem 0 0 0.2rem;
+            box-sizing: border-box;
+        }
+
+        #DB-custom_css::placeholder {
+            white-space: pre-wrap;
+            color: gray;
+        }
+
+        #DB-custom_css_btn {
+            width: min-content;
+            height: min-content;
+            padding: 0.5rem 1rem;
+            margin: 1rem 0;
+            justify-self: center;
+            cursor: pointer;
+            background-color: white;
+            border: solid 1px gray;
+            border-radius: 3px;
+            color: #4f4f4f;
+            font-weight: bold;
+        }
+
+        #DB-custom_css_btn:disabled {
+            color: #c8c8c8;
+            border-color: #d6d6d6;
+            cursor: default;
+        }
+
+        .DB-setting_option_active {
+            border-right: none;
+            color: black;
+            cursor: default;
+            pointer-events: none;
+            position: relative;
+        }
+
+        #DB-setting_export {
+            height: 100%;
+            width: 100%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 80%;
+            color: var(--uni_color);
+            cursor: pointer;
+            position: absolute;
+
+        }
+
+        #DB-setting_import {
+            height: 100%;
+            width: 100%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 80%;
+            color: var(--uni_color);
+            cursor: pointer;
+            position: absolute;
+        }
+
+        #DB-import_selector {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            opacity: 0;
+        }
+
+        #DB-import_selector:hover {
+            cursor: pointer;
+        }
+
+        #DB-setting_about {
+            height: 100%;
+            width: 100%;
+            color: rgb(94 94 94);
+            text-align: center;
+            box-sizing: border-box;
+            position: absolute;
+            display: grid;
+            grid-template-rows: min-content min-content 1fr 1.5fr;
+            user-select: text;
+        }
+
+
+        /*** profile casefile / info ***/
+        #DB-info_screen {
+            cursor: default;
+            position: fixed;
+            height: 100%;
+            width: 100%;
+            z-index: 4;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        #DB-info_wrapper {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 0.1rem solid white;
+            background-color: white;
+            border-radius: 0.5rem;
+            height: 80%;
+            width: 80%;
+            overflow: hidden;
+        }
+
+        #DB-info_text_wrapper .DB-pencil_icon {
+            position: absolute;
+            top: 0.9rem;
+            left: calc(100% - 1rem);
+        }
+
+        #DB-info_text_wrapper.DB-info_text_uneditable .DB-pencil_icon:hover::before,
+        #DB-info_text_wrapper.DB-info_text_uneditable .DB-pencil_icon:hover::after,
+        #DB-info_text_wrapper .DB-pencil_icon::before,
+        #DB-info_text_wrapper .DB-pencil_icon::after {
+            border-right-color: black;
+        }
+
+        #DB-info_text_wrapper.DB-info_text_uneditable .DB-pencil_icon::before,
+        #DB-info_text_wrapper.DB-info_text_uneditable .DB-pencil_icon::after {
+            border-right-color: var(--uni_hover_color);
+        }
+
+        #DB-info_text_wrapper.DB-info_text_uneditable .DB-pencil_icon::before,
+        #DB-info_text_wrapper.DB-info_text_uneditable .DB-pencil_icon::after {
+            border-right-color: rgb(100, 100, 100);
+        }
+
+        #DB-info_img_wrapper {
+            flex: 1;
+            height: 100%;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #DB-info_img_add {
+            position: absolute;
+            height: 1rem;
+            width: 1rem;
+            background-color: var(--uni_color);
+            border-radius: 50%;
+            color: white;
+            user-select: none;
+            right: 50%;
+            display: inline-block;
+            margin: 0.1rem 0.5rem 0 0;
+            z-index: 1;
+            justify-content: center;
+            display: flex;
+            align-items: center;
+        }
+
+        #DB-info_img_add::before {
+            content: "+";
+            display: block;
+            position: absolute;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: large;
+        }
+
+        #DB-info_img_add:hover {
+            cursor: pointer;
+            background-color: var(--uni_hover_color);
+        }
+
+        #DB-info_img_remove {
+            resize: none;
+            position: relative;
+            height: 1rem;
+            width: 1rem;
+            background-color: var(--uni_color);
+            border-radius: 50%;
+            left: 50%;
+            color: white;
+            user-select: none;
+            display: inline-block;
+            margin: 0.1rem 0 0.2rem 0.5rem;
+            justify-content: center;
+            display: flex;
+            align-items: center;
+        }
+
+        #DB-info_img_remove::before {
+            content: "-";
+            display: block;
+            position: absolute;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: large;
+        }
+
+        #DB-info_img_remove:hover {
+            cursor: pointer;
+            background-color: var(--uni_hover_color);
+        }
+
+        #DB-slideshow {
+            scroll-behavior: smooth;
+            flex: 1;
+            width: 100%;
+            display: flex;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            overflow: hidden;
+            color: white;
+            scroll-snap-type: x mandatory;
+            background-color: white;
+            padding-bottom: 1rem;
+        }
+
+        #DB-slideshow::-webkit-scrollbar {
+            display: none;
+        }
+
+        #DB-slideshow_none {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            top: 50%;
+            left: 50%;
+            color: gray;
+            user-select: none;
+            font-size: 90%;
+        }
+
+        .DB-none_hidden {
+            visibility: hidden;
+        }
+
+        .DB-pic_wrapper {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            flex-shrink: 0;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .DB-pic_wrapper img {
+            user-select: none;
+            display: block;
+            position: relative;
+            height: auto;
+            width: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .DB-arrow_wrapper {
+            border: 0;
+            position: absolute;
+            width: 4rem;
+            top: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 16px 0 rgba(0, 0, 0, 0.1);
+            opacity: 0;
+
+            height: 100%;
+            border-radius: 0;
+
+        }
+
+        .DB-arrow_wrapper:hover {
+            background-color: var(--uni_color);
+            opacity: 60%;
+        }
+
+        .DB-left_wrapper {
+            transform: translate(0, -50%);
+        }
+
+        .DB-right_wrapper {
+            right: 0;
+            transform: translate(0%, -50%);
+        }
+
+        .DB-left_wrapper::after {
+            content: "";
+            transform: translate(25%, 0) rotate(45deg);
+            border: solid white;
+            border-width: 0 0 0.3rem 0.3rem;
+            width: 0.6rem;
+            height: 0.6rem;
+        }
+
+        .DB-right_wrapper::after {
+            content: "";
+            transform: translate(-25%, 0) rotate(45deg);
+            border: solid white;
+            border-width: 0.3rem 0.3rem 0 0;
+            width: 0.6rem;
+            height: 0.6rem;
+        }
+
+        #DB-info_text_wrapper {
+            flex: 1;
+            background-color: rgb(193 193 193);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+
+        }
+
+        #DB-info_mode {
+            height: 2.5rem;
+            width: 2.5rem;
+            position: absolute;
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            display: flex;
+            font-weight: bold;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            color: rgb(100, 100, 100);
+        }
+
+        #DB-info_mode::before {
+            display: block;
+            height: min-content;
+            width: fit-content;
+        }
+
+        .DB-info_textmode #DB-info_mode {
+            font-family: Georgia;
+            font-size: 145%;
+        }
+
+        .DB-info_textmode #DB-info_mode::before {
+            content: "T";
+        }
+
+        .DB-info_codemode #DB-info_mode {
+            font-family: Arial, sans-serif;
+            font-size: 125%;
+        }
+
+        .DB-info_codemode #DB-info_mode::before {
+            content: "</>";
+        }
+
+        #DB-name_input {
+            resize: none;
+            height: 2rem;
+            width: 50%;
+            left: 50%;
+            position: relative;
+            transform: translate(-50%, 0);
+            margin: 1rem 0;
+            display: block;
+            text-align: center;
+            padding: 0.5rem;
+            font-weight: normal;
+            border: 0;
+            background-color: transparent;
+            color: black;
+            outline: none;
+            font-weight: bold;
+            cursor: default;
+            box-sizing: border-box;
+        }
+
+        #DB-info_editor {
+            flex: 1;
+            width: calc(100% - 2rem);
+            display: block;
+            margin: 0 auto 1rem auto;
+            position: relative;
+        }
+
+        #DB-info_output {
+            position: absolute;
+            background-color: #f6f6f6;
+            height: 100%;
+            width: 100%;
+            resize: none;
+            visibility: hidden;
+            overflow-y: scroll;
+            overflow-x: scroll;
+            box-sizing: border-box;
+            padding: 0.5rem;
+            font-family: monospace;
+        }
+
+        .DB-info_text_uneditable #DB-info_output {
+            visibility: inherit;
+
+        }
+
+        #DB-info_input {
+            height: 100%;
+            width: 100%;
+            resize: none;
+            display: block;
+            border-radius: 0;
+            box-sizing: border-box;
+            overflow: scroll;
+            padding: 0.5rem;
+            border: none;
+            white-space: nowrap;
+        }
+
+        .DB-info_text_uneditable #DB-info_input {
+            visibility: hidden;
+            outline: none;
+            background-color: #f6f6f6;
+            cursor: default;
+        }
+
+        .DB-info_textmode #DB-info_input {
+            visibility: inherit;
+            white-space: pre-wrap;
+        }
+
+        .DB-info_textmode #DB-info_output {
+            visibility: hidden;
+        }
+
+
+        /*** line customization ***/
+        #DB-set_lines_screen {
+            position: fixed;
+            height: 100%;
+            width: 100%;
+            z-index: 4;
+            background-color: rgba(0, 0, 0, 0.8);
+            /* visibility: hidden; */
+        }
+
+        #DB-set_lines_wrapper {
+            display: grid;
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 0.1rem solid white;
+            background-color: white;
+            border-radius: 0.5rem;
+            height: 17rem;
+            width: 17rem;
+            overflow: hidden;
+            grid-template-columns: 50% 50%;
+            grid-auto-rows: min-content;
+        }
+
+        #DB-set_sample_line_wrapper {
+            overflow: visible;
+            grid-row: 1;
+            grid-column: 1 / span 2;
+            align-self: center;
+            justify-self: center;
+            margin-top: 2rem;
+            padding: 4rem 2rem 1.5rem 2rem;
+            pointer-events: none;
+        }
+
+        #DB-sample_line_indicator {
+            font-family: monospace;
+        }
+
+        #DB-sample_line_text_color {
+            grid-row: 1;
+            grid-column: 1;
+            width: 2rem;
+            height: 2rem;
+            margin: 1.5rem 0 0 1rem;
+            box-sizing: border-box;
+        }
+
+        #DB-sample_line_color {
+            grid-row: 1;
+            grid-column: 1;
+            width: 2rem;
+            height: 2rem;
+            margin: 4.9rem 0 0 1rem;
+            box-sizing: border-box;
+        }
+
+        #DB-sample_line_text {
+            grid-row: 1;
+            grid-column: 1 /span 2;
+            width: 10rem;
+            justify-self: center;
+            text-align: center;
+            margin-top: 1.5rem;
+            height: 2rem;
+            box-sizing: border-box;
+        }
+
+        #DB-sample_line_thickness {
+            grid-row: 1 /span 2;
+            grid-column: 2;
+            filter: grayscale(100%);
+            position: relative;
+            transform: rotate(270deg) translate(-0.4rem, 0);
+            width: 4rem;
+            margin-left: 4.5rem;
+            align-self: center;
+        }
+
+        #DB-sample_line_gap {
+            margin-bottom: 2rem;
+            grid-row: 2;
+            grid-column: 1 / span 2;
+            filter: grayscale(100%);
+            width: 7rem;
+            justify-self: center;
+        }
+
+        #DB-sample_line_arrow {
+            grid-row: 3;
+            grid-column: 1/ span 2;
+            justify-self: center;
+            height: 2.5rem;
+            width: 6rem;
+            border: solid 0.1rem var(--uni_hover_color);
+            border-radius: 0.3rem;
+            color: var(--uni_hover_color);
+            cursor: pointer;
+            font-size: medium;
+            box-sizing: border-box;
+            background-color: transparent;
+            justify-content: space-around;
+            background-color: #e9e9e9;
+        }
+
+        #DB-sample_line_arrow:hover {
+            background-color: #eeeeee;
+        }
+
+        .DB-reset {
+            grid-row: 5;
+            grid-column: 1 /span 2;
+            justify-self: center;
+            margin-top: 1.8rem;
+            color: var(--uni_hover_color);
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: medium;
+        }
+
+
+        /*** profile customization ***/
+        #DB-set_profile_screen {
+            cursor: default;
+            position: fixed;
+            height: 100%;
+            width: 100%;
+            z-index: 4;
+            background-color: rgba(0, 0, 0, 0.8);
+            /* visibility: hidden;    */
+        }
+
+        #DB-set_profile_wrapper {
+            display: grid;
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 0.1rem solid white;
+            background-color: white;
+            border-radius: 0.5rem;
+            height: 17rem;
+            width: 17rem;
+            overflow: hidden;
+            grid-template-columns: 5rem 1fr;
+            grid-auto-rows: 4rem 5rem min-content 1fr;
+        }
+
+        #DB-shadow_label {
+            height: 1rem;
+            width: 1rem;
+            grid-column: 1 /span 2;
+            grid-row: 1;
+            justify-self: center;
+            margin-right: 4.5rem;
+            font-weight: bold;
+            align-self: center;
+            margin-bottom: 0.5rem;
+        }
+
+        #DB-sample_profile_shadow {
+            height: 1rem;
+            width: 1rem;
+            grid-column: 1 /span 2;
+            grid-row: 1;
+            margin: 0 0 0.3rem 4.5rem;
+            justify-self: center;
+            align-self: center;
+        }
+
+        #DB-sample_profile_text_color {
+            grid-row: 2;
+            grid-column: 1;
+            justify-self: center;
+            align-self: end;
+            height: 2rem;
+            width: 2rem;
+        }
+
+        #DB-sample_profile_color {
+            grid-row: 2;
+            justify-self: center;
+            height: 2rem;
+            grid-column: 1;
+            width: 2rem;
+        }
+
+        #DB-profile_text_wrapper {
+            grid-column: 1 /span 2;
+            grid-row: 2;
+            justify-self: center;
+            align-self: end;
+            height: 0.9rem;
+            width: 3rem;
+            background-color: white;
+            border: 1px solid black;
+            pointer-events: none;
+            z-index: 1;
+            margin-top: 0.5rem;
+            font-size: smaller;
+            text-align: center;
+        }
+
+        #DB-profile_sample_wrapper {
+
+            grid-row: 2;
+            grid-column: 1 / span 2;
+            position: absolute;
+            justify-self: center;
+            height: 5rem;
+            width: 4.5rem;
+            border: 2px solid black;
+            border-radius: 0.5rem;
+        }
+
+        #DB-profile_alpha {
+            width: 10rem;
+            grid-row: 3;
+            grid-column: 1 /span 2;
+            align-self: center;
+            justify-self: center;
+            filter: grayscale(1);
+            margin-top: 2.3rem;
+        }
+
+        #DB-set_profile_wrapper .DB-reset {
+            grid-row: 4;
+            height: 2rem;
+            width: 5rem;
+            margin-top: 2rem;
+        }
+
+
+        /*** profile customization ***/
+        #DB-set_frame_screen {
+            position: fixed;
+            height: 100%;
+            width: 100%;
+            z-index: 4;
+            background-color: rgba(0, 0, 0, 0.8);
+            /* visibility: hidden;    */
+        }
+
+        #DB-set_frame_wrapper {
+            display: grid;
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 0.1rem solid white;
+            background-color: white;
+            border-radius: 0.5rem;
+            height: 20rem;
+            width: 18rem;
+            overflow: hidden;
+            grid-template-columns: 5rem 1fr;
+            grid-auto-rows: 2rem 5rem 5rem 1fr;
+        }
+
+        #DB-sample_frame_text_color {
+            grid-row: 2;
+            justify-self: center;
+            height: 2rem;
+            grid-column: 1;
+            width: 2rem;
+        }
+
+        #DB-sample_frame_color {
+            grid-row: 2;
+            grid-column: 1;
+            justify-self: center;
+            align-self: end;
+            height: 2rem;
+            width: 2rem;
+        }
+
+        #DB-frame_text_wrapper {
+            grid-column: 1 /span 2;
+            grid-row: 2;
+            justify-self: center;
+            /* align-self: center; */
+            height: 1rem;
+            width: 3rem;
+            background-color: white;
+            pointer-events: none;
+            z-index: 1;
+            margin-top: 0.5rem;
+            font-size: smaller;
+            text-align: center;
+        }
+
+        #DB-frame_sample_wrapper {
+            grid-row: 2;
+            grid-column: 1 / span 2;
+            position: absolute;
+            justify-self: center;
+            height: 4rem;
+            width: 4rem;
+            border: 0.4rem solid;
+            border-radius: 0.5rem;
+            border-color: #363636;
+            cursor: pointer;
+            outline: 1px solid black;
+        }
+
+        #DB-frame_alpha {
+            width: 10rem;
+            grid-row: 3;
+            grid-column: 1 /span 2;
+            align-self: center;
+            justify-self: center;
+            filter: grayscale(1);
+        }
+
+        #DB-frame_custom_back {
+            width: 10rem;
+            height: min-content;
+            grid-column: 1 /span2;
+            grid-row: 4;
+            justify-self: center;
+            margin: 0.5rem 0 1rem 0;
+            text-align: center;
+        }
+
+        #DB-frame_repeat_label {
+            font-size: small;
+            font-weight: bold;
+            color: gray;
+            grid-column: 1 /span 2;
+            grid-row: 5;
+            align-self: center;
+            margin-left: 4rem;
+        }
+
+        #DB-frame_repeat {
+            grid-column: 2;
+            grid-row: 5;
+            height: 1rem;
+            width: 1rem;
+            align-self: center;
+            margin-left: 2.3rem;
+        }
+
+        #DB-frame_repeat_width {
+            grid-column: 2;
+            grid-row: 5;
+            height: 1.5rem;
+            width: 4rem;
+            justify-self: center;
+            padding-left: 0.3rem;
+        }
+
+        #DB-frame_repeat_width::placeholder {
+            color: #9d9d9d
+        }
+
+        #DB-set_frame_wrapper .DB-reset {
+            grid-row: 6;
+            margin-top: 0;
+        }
+
+        /*** origin ***/
+        #DB-origin {
+            position: absolute;
+            height: 0;
+            width: 0;
+        }
+
+        .DB-origin_moving {
+            transition: left var(--move_time), top var(--move_time);
+
+        }
+
+        #DB-things_wrapper {
+            user-select: none;
+        }
+
+        #DB-lines_wrapper {
+            position: absolute;
+            overflow: visible;
+            transform: scale(1);
+        }
+
+        textPath {
+            user-select: none;
+        }
+
+        .DB-join_btn {
+            box-shadow: rgb(60 64 67 / 30%) 0px 1px 2px 0px, rgb(60 64 67 / 15%) 0px 1px 3px 1px;
+            resize: none;
+            background-color: transparent;
+            user-select: none;
+            font-size: 150%;
+            height: 1.7rem;
+            width: 1.7rem;
+        }
+
+        .DB-join_btn::after {
+            content: "±";
+            display: block;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            height: 1.7rem;
+            width: 1.7rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: monospace;
+        }
+
+        .DB-join_btn:hover {
+            cursor: pointer;
+        }
+
+        .DB-submenu {
+            height: 3em;
+            width: 3rem;
+            position: absolute;
+            cursor: pointer;
+            pointer-events: initial;
+        }
+
+        .DB-submenu::before {
+            content: "";
+            display: block;
+            background-color: var(--uni_color);
+            height: 0.3rem;
+            width: 0.3rem;
+            position: relative;
+            left: 50%;
+            top: 50%;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0.5rem var(--uni_color), 0 -0.5rem var(--uni_color);
+        }
+
+
+        /*** frames ***/
+        .DB-frame {
+            min-height: 7rem;
+            min-width: 13rem;
+
+            height: 35rem;
+            width: 35rem;
+            resize: none;
+            border-radius: 1rem;
+            border: solid 0.5rem;
+            box-sizing: border-box;
+            position: absolute;
+            /*pointer-events: none;*/
+            visibility: visible;
+        }
+
+        .DB-frame * {
+            visibility: visible;
+        }
+
+        .DB-frame_fill {
+            visibility: hidden;
+            border: none;
+            box-sizing: border-box;
+        }
+
+        .DB-frame_fill::before {
+            content: "";
+            visibility: visible;
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            background-color: inherit;
+            mix-blend-mode: multiply;
+            /* NOT additive */
+            z-index: -1;
+            outline: inherit;
+            border-radius: inherit;
+        }
+
+        .DB-frame_editable {
+            overflow: hidden;
+
+            resize: both;
+            visibility: visible;
+        }
+
+        .DB-NC .DB-frame_editable {
+            pointer-events: all;
+        }
+
+        .DB-frame_editable .DB-pencil_icon::after,
+        .DB-frame_editable .DB-pencil_icon::before {
+            border-right-color: var(--uni_hover_color);
+        }
+
+        .DB-frame_back {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .DB-frame .DB-profile_move {
+            pointer-events: initial;
+        }
+
+        .DB-frame .DB-pencil_icon {
+            position: absolute;
+            pointer-events: initial;
+        }
+
+        .DB-frame_text {
+            position: absolute;
+            font-weight: bold;
+            color: inherit;
+            background-color: transparent;
+            border-width: 0;
+            display: block;
+            /* pointer-events: none; */
+            user-select: none;
+            resize: none;
+            text-align: center;
+            width: calc(100% - 6rem);
+            height: 2rem;
+            margin: auto;
+            overflow: hidden;
+            left: 50%;
+            transform: translate(-50%, 0);
+            padding-top: 0.7rem;
+
+        }
+
+        .DB-frame_text::placeholder {
+            opacity: 0.3;
+            color: inherit;
+        }
+
+        .DB-frame_editable .DB-frame_text {
+            background-color: white;
+            font-weight: normal;
+            border-width: thin;
+            user-select: auto;
+            pointer-events: initial;
+        }
+
+        .DB-frame_del {
+            position: absolute;
+            background-color: rgb(255, 0, 0);
+            width: fit-content;
+            padding: 0.3rem 0.5rem;
+            color: white;
+            border-radius: 0.2rem;
+            cursor: pointer;
+            top: calc(100% - 0.5rem);
+            left: 50%;
+            transform: translate(-50%, -100%);
+            pointer-events: initial;
+        }
+
+        .DB-frame_del:hover:active {
+            box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+        }
+
+        .DB-frame_del::after {
+            content: "Delete";
+        }
+
+
+        /*** profiles ***/
+        .DB-profile {
+            cursor:default;
+            position: absolute;
+            border-radius: 0.5rem;
+            height: 26rem;
+            width: 20rem;
+            min-height: 10rem;
+            min-width: 20rem;
+            resize: none;
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: 3rem auto 1fr;
+        }
+
+        .DB-profile_editable {
+            resize: both;
+        }
+
+        .DB-profile_move {
+            position: absolute;
+            margin-top: 0.1rem;
+            margin-left: 0.2rem;
+            text-align: center;
+            font-size: 200%;
+            padding: 0 0.5rem;
+            border-radius: 50%;
+            color: var(--uni_color);
+            user-select: none;
+            width: fit-content;
+
+        }
+
+        .DB-profile_move::before {
+            content: "≡";
+        }
+
+        .DB-profile_move:hover {
+            cursor: all-scroll;
+        }
+
+        .DB-profile_del {
+            position: absolute;
+            background-color: rgb(255, 0, 0);
+            width: fit-content;
+            padding: 0.3rem 0.5rem;
+            color: white;
+            border-radius: 0.2rem;
+            cursor: pointer;
+            top: 0.5rem;
+            left: 50%;
+            transform: translate(-50%, 0);
+        }
+
+        .DB-profile_del:hover:active {
+            box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+        }
+
+        .DB-profile_del::after {
+            content: "Delete";
+        }
+
+        .DB-pencil_icon {
+            display: inline-block;
+            width: 2.5rem;
+            height: 2.5rem;
+            position: relative;
+            left: 100%;
+            transform: translate(-100%, 0);
+            cursor: pointer;
+
+        }
+
+        .DB-pencil_icon::before {
+            content: "";
+            display: inline-block;
+            height: var(--pencil_handle_height);
+            border-right: var(--uni_color) var(--pencil_thickness) solid;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) rotate(30deg) translate(0, calc(var(--pencil_eraser_height) / 2 + var(--pencil_gap) / 2));
+        }
+
+        .DB-pencil_icon::after {
+            content: "";
+            display: inline-block;
+            height: var(--pencil_eraser_height);
+            border-right: var(--uni_color) var(--pencil_thickness) solid;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) rotate(30deg) translate(0, calc(var(--pencil_gap) / -2 - var(--pencil_eraser_height)))
+        }
+
+        .DB-pencil_icon:hover::after,
+        .DB-pencil_icon:hover::before {
+            border-right-color: var(--uni_hover_color);
+        }
+
+        .DB-profile_img {
+            user-select: none;
+            display: block;
+            position: relative;
+            width: 100%;
+            max-height: 100%;
+            min-height: 2rem;
+            object-fit: contain;
+            -webkit-user-drag: none
+        }
+
+        .DB-profile_img:hover {
+            cursor: pointer;
+            filter: brightness(95%);
+        }
+
+        .DB-profile_text {
+            position: relative;
+            font-weight: bold;
+            color: inherit;
+            border-width: 0;
+            display: inline;
+            pointer-events: none;
+            user-select: none;
+            resize: none;
+            width: calc(100% - 6rem);
+            text-align: center;
+            overflow: hidden;
+            grid-row: 3;
+            grid-column: 1;
+            justify-self: center;
+            height: calc(100% - 2.3rem);
+            min-height: 1rem;
+            align-self: center;
+            background-color: transparent;
+        }
+
+        .DB-profile_editable .DB-pencil_icon::after,
+        .DB-profile_editable .DB-pencil_icon::before {
+            border-right-color: var(--uni_hover_color);
+        }
+
+        .DB-profile_editable .DB-profile_text {
+            background-color: white;
+            font-weight: normal;
+            border-width: thin;
+            pointer-events: auto;
+            user-select: auto;
+        }
+
+        .DB-profile_editable .DB-profile_text::placeholder {
+            color: transparent;
+        }
+
+        .DB-profile .DB-join_btn {
+            color: var(--uni_color);
+            position: relative;
+            box-shadow: none;
+            font-weight: bold;
+            bottom: 0;
+            left: 0;
+            transform: none;
+            margin: 0.5rem 0 0.8rem 0.6rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            box-sizing: border-box;
+            grid-row: 3;
+            display: inline;
+            grid-column: 1;
+            align-self: end;
+        }
+
+
+        /*** notes ***/
+        .DB-note {
+            cursor: default;
+            position: absolute;
+            background-color: white;
+            border-radius: 0.5rem;
+            height: 15rem;
+            width: 17rem;
+            min-height: 7.5rem;
+            min-width: 10rem;
+            box-shadow: rgb(60 64 67 / 30%) 0px 1px 2px 0px, rgb(60 64 67 / 15%) 0px 1px 3px 1px;
+            resize: none;
+            overflow: hidden;
+            transform: none;
+            display: grid;
+            grid-template-rows: 3rem 1fr 3rem;
+            /* box-sizing: border-box; */
+        }
+
+        .DB-note_editable {
+            resize: both;
+        }
+
+        .DB-note_color {
+            position: absolute;
+            height: 2rem;
+            width: 2rem;
+            margin: 0.35rem 0 0 0.35rem;
+            border-radius: 3px;
+            border: none;
+            background-color: transparent;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+
+        .DB-note_move {
+            position: absolute;
+            margin-top: 0.1rem;
+            margin-left: 0.2rem;
+            text-align: center;
+            font-size: 200%;
+            /* width: 0.8rem; */
+            padding: 0 0.5rem;
+            border-radius: 50%;
+            color: var(--uni_color);
+            user-select: none;
+            width: fit-content;
+        }
+
+        .DB-note_move::before {
+            content: "≡";
+        }
+
+        .DB-note_move:hover {
+            cursor: all-scroll;
+        }
+
+        .DB-note_del {
+            position: absolute;
+            background-color: rgb(255, 0, 0);
+            width: fit-content;
+            padding: 0.3rem 0.5rem;
+            color: white;
+            border-radius: 0.2rem;
+            cursor: pointer;
+            top: 0.5rem;
+            left: 50%;
+            transform: translate(-50%, 0);
+        }
+
+        .DB-note_del:hover:active {
+            box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+        }
+
+        .DB-note_del::after {
+            content: "Delete";
+        }
+
+        .DB-note_html_text {
+            position: absolute;
+            font-weight: bold;
+            color: rgb(80 80 80);
+            border-width: 0;
+            display: block;
+            pointer-events: none;
+            user-select: none;
+            width: calc(100% - 4rem);
+            overflow: hidden;
+            height: calc(100% - 3rem);
+            min-height: 1rem;
+            box-sizing: border-box;
+            background-color: transparent;
+            grid-column: 1;
+            grid-row: 2;
+            justify-self: center;
+            font-family: monospace;
+            padding: 3px;
+            visibility: hidden;
+        }
+
+        .DB-note_html .DB-note_html_text {
+            visibility: visible;
+        }
+
+        .DB-note_html.DB-note_editable .DB-note_html_text,
+        .DB-note_html .DB-note_text {
+            visibility: hidden;
+        }
+
+        .DB-note_html.DB-note_editable .DB-note_text {
+            visibility: visible;
+        }
+
+        .DB-note_text {
+            position: relative;
+            font-weight: bold;
+            color: rgb(80 80 80);
+            border-width: 0;
+            display: block;
+            pointer-events: none;
+            user-select: none;
+            resize: none;
+            width: calc(100% - 4rem);
+            margin: auto;
+            overflow: hidden;
+            height: 100%;
+            min-height: 1rem;
+            box-sizing: border-box;
+            background-color: transparent;
+        }
+
+        .DB-note_editable .DB-pencil_icon::after,
+        .DB-note_editable .DB-pencil_icon::before {
+            border-right-color: var(--uni_hover_color);
+        }
+
+        .DB-note_editable .DB-note_text {
+            background-color: white;
+            overflow-y: scroll;
+            font-weight: normal;
+            border-width: thin;
+            pointer-events: auto;
+            user-select: auto;
+        }
+
+        .DB-note .DB-join_btn {
+            color: var(--uni_color);
+            position: relative;
+            box-shadow: none;
+            font-weight: bold;
+            margin-left: 0.6rem;
+            align-self: center;
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .DB-note .DB-join_btn:hover {
+            color: rgb(53, 53, 53);
+            cursor: pointer;
+        }
+
+        .DB-note_text_align {
+            grid-column: 1;
+            grid-row: 3;
+            width: 1.5rem;
+            height: 1rem;
+            padding: 0.5rem;
+            cursor: pointer;
+            justify-self: center;
+            position: relative;
+            align-self: center;
+            transform: translate(0, 0.1rem);
+        }
+
+        .DB-note_text_align::before {
+            content: "";
+            display: block;
+            width: 40%;
+            border-top: 0.2rem solid var(--uni_color);
+            border-bottom: 0.2rem solid var(--uni_color);
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            right: 0.5rem;
+            bottom: 0.5rem;
+            box-sizing: border-box;
+        }
+
+        .DB-note_text_align::after {
+            content: "";
+            display: block;
+            width: 30%;
+            border-top: 0.2rem solid var(--uni_color);
+            position: relative;
+            top: 50%;
+            transform: translate(0, -50%);
+        }
+
+        .DB-align_center::before {
+            margin: auto
+        }
+
+        .DB-align_center::after {
+            margin: auto
+        }
+
+        .DB-align_right::before {
+            margin-left: auto
+        }
+
+        .DB-align_right::after {
+            margin-left: auto
+        }
+
+        .DB-align_html::before {
+            content: "</>";
+            color: var(--uni_color);
+            font-weight: bold;
+            margin: auto;
+            border: none;
+        }
+
+        .DB-align_html::after {
+            border: none;
+        }
+
+        .DB-note_align_center .DB-note_text {
+            text-align: center;
+        }
+
+        .DB-note_align_right .DB-note_text {
+            text-align: right;
+        }
+
+        .DB-note_html .DB-note_text {
+            white-space: pre;
+            overflow-y: scroll;
+            overflow-x: scroll;
+        }
+
+
+        /*** pins ***/
+        .DB-pin {
+            outline: none;
+            border: 0;
+            padding: 0;
+            margin: 0;
+            resize: none;
+            position: absolute;
+            height: 2rem;
+            width: 2rem;
+            cursor: move;
+            background-color: transparent;
+            transform-style: preserve-3d;
+        }
+
+        .DB-pin_thumb {
+            border-radius: 50%;
+            background: linear-gradient(45deg, rgba(116, 116, 116, 1) 0%, rgba(64, 64, 64, 1) 100%);
+        }
+
+        .DB-pin_thumb::after {
+            content: "";
+            display: block;
+            height: 1.4rem;
+            width: 1.4rem;
+            border-radius: 50%;
+            position: relative;
+            margin: auto;
+            background-color: gray;
+            outline-color: inherit;
+        }
+
+        .DB-pin_needle {
+            position: absolute;
+            border-radius: 50%;
+            background-image: radial-gradient(at 15px 5px, rgba(116, 116, 116, 1), rgba(64, 64, 64, 1));
+            width: 2rem;
+            height: 2rem;
+            transform: translate(65%, -65%);
+        }
+
+        .DB-pin_needle::before {
+            content: '';
+            display: block;
+            position: relative;
+            border-radius: 50%;
+            left: 45%;
+            top: -30%;
+            height: 0.4rem;
+            width: 0.4rem;
+            background-color: white;
+            transform: translate(-50%, 0);
+            outline-color: inherit;
+        }
+
+        .DB-pin_needle::after {
+            position: absolute;
+            content: '';
+            width: 0.3rem;
+            height: 2rem;
+            left: 20%;
+            top: 30%;
+            background-color: gray;
+            transform: translate(-50%, 0%) rotate(45deg) translateZ(-1em);
+            border: 1px solid gray;
+            border-top: none;
+            border-radius: 50%;
+            outline-color: inherit;
+
+        }
+
+        .DB-pin_location {
+            height: 2rem;
+            width: 2rem;
+            position: absolute;
+            outline-color: transparent;
+            transform: translate(0, -70%);
+        }
+
+        .DB-pin_location::before {
+            content: "";
+            display: block;
+            position: absolute;
+            border-radius: 50% 50% 50% 0;
+            background-color: rgb(107, 107, 107);
+            width: 2rem;
+            height: 2rem;
+            transform: translate(0, -50%) rotate(-45deg);
+            outline-style: solid;
+            outline-color: inherit;
+        }
+
+        .DB-pin_location::after {
+            content: "";
+            display: block;
+            position: absolute;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+        }
+
+        .DB-pin_delete {
+            box-shadow: rgb(60 64 67 / 30%) 0px 1px 2px 0px, rgb(60 64 67 / 15%) 0px 1px 3px 1px;
+            position: absolute;
+            top: -70%;
+            left: -70%;
+            height: 1rem;
+            width: 1rem;
+            background-color: red;
+            border-radius: 20%;
+            user-select: none;
+            visibility: visible;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .DB-pin_delete::after {
+            position: absolute;
+            content: "\00d7";
+            color: white;
+            font-family: monospace;
+            font-size: small;
+            font-weight: bold;
+        }
+
+        .DB-pin_type {
+            box-shadow: rgb(60 64 67 / 30%) 0px 1px 2px 0px, rgb(60 64 67 / 15%) 0px 1px 3px 1px;
+            position: absolute;
+            height: 1.1rem;
+            width: 1.1rem;
+            cursor: pointer;
+            box-sizing: border-box;
+            user-select: none;
+            overflow: hidden;
+            border-radius: 50%;
+            background-color: rgb(80 80 80);
+            visibility: visible;
+            bottom: -100%;
+            right: -65%;
+        }
+
+        .DB-pin_type::before {
+            content: "";
+            display: block;
+            height: 1.5rem;
+            width: 0.8rem;
+            border: solid 0.15rem transparent;
+            border-top: solid 0.15rem white;
+            position: absolute;
+            border-radius: 50%;
+            left: 50%;
+            transform: translate(-50%, 0.25rem);
+        }
+
+        .DB-pin_type::after {
+            content: "";
+            display: block;
+            position: absolute;
+            width: 0.3rem;
+            height: 0.3rem;
+            background-color: white;
+            border-radius: 50%;
+            transform: translate(-50%, -40%);
+            left: 50%;
+            top: 0.6rem;
+            box-sizing: border-box;
+        }
+
+        .DB-pin .DB-join_btn {
+            resize: none;
+            position: absolute;
+            height: 1.1rem;
+            width: 1.1rem;
+            background-color: rgb(80 80 80);
+            border-radius: 50%;
+            bottom: -100%;
+            left: -70%;
+        }
+
+        .DB-pin .DB-join_btn::after {
+            border: none;
+            color: white;
+            height: 100%;
+            width: 109%;
+            font-size: small;
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .DB-pin .DB-join_active {
+            box-sizing: border-box;
+            border: 2px solid white;
+            outline: 2px solid black;
+        }
+
+        .DB-join_active::after {
+            color: var(--uni_hover_color);
+            border: solid 0.2rem black;
+            border-radius: 0.3rem;
+        }
+
+        .DB-pin_needle .DB-pin_delete {
+            top: -5%;
+            left: -135%;
+        }
+
+        .DB-pin_needle .DB-pin_type {
+            bottom: -165%;
+            right: 0;
+        }
+
+        .DB-pin_needle .DB-join_btn {
+            bottom: -165%;
+            left: -135%;
+        }
+
+        .DB-pin_location .DB-pin_delete {
+            top: -140%;
+            left: 50%;
+            transform: translate(-50%, 0);
+        }
+
+        .DB-pin_location .DB-pin_type {
+            bottom: -170%;
+        }
+
+        .DB-pin_location .DB-join_btn {
+            bottom: -170%;
+        }
+
+        /*** bottom right add btns ***/
+        .DB-icon_wrapper {
+            height: 3rem;
+            width: 3rem;
+            border-radius: 0.5rem;
+            background-color: rgb(80 80 80);
+            font-size: 2rem;
+            display: flex;
+            box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+            color: white;
+            user-select: none;
+            opacity: 0.8;
+            position: fixed;
+
+            /* position: relative;
+        bottom: -100%;
+        transform: translate(0, -100%);
+        margin: -1rem 0 0 1rem;
+        display: inline-block; */
+        }
+
+        .DB-icon_wrapper:hover {
+            cursor: pointer;
+            opacity: 1;
+        }
+
+        .DB-icon_wrapper_right {
+            z-index: 3;
+        }
+
+
+        #DB-loc_origin {
+            z-index: 3;
+            left: 1rem;
+            bottom: 1rem;
+        }
+
+        #DB-loc_active {
+            z-index: 3;
+            bottom: 1rem;
+            left: 5rem;
+        }
+
+        .DB-active_icon {
+            border-radius: 0.3rem;
+            height: var(--active_height);
+            width: var(--active_width);
+            border: solid var(--active_color) var(--active_thickness);
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .DB-active_icon::after {
+            content: "±";
+            display: block;
+            position: relative;
+            width: 100%;
+            font-weight: 900;
+            text-align: center;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+        }
+
+
+        /* add pin btn */
+        .DB-pin_icon {
+            position: relative;
+            padding-top: 0.4rem;
+            box-sizing: border-box;
+            top: 50%;
+            left: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            transform: translate(-50%, -50%);
+        }
+
+        .DB-pin_icon::before {
+            content: "";
+            display: block;
+            position: absolute;
+            width: var(--pin_diameter);
+            height: var(--pin_diameter);
+            background-color: white;
+            border-radius: 50%;
+            left: 50%;
+            transform: translate(-50%, 0);
+        }
+
+        .DB-pin_icon::after {
+            content: "";
+            top: calc(var(--pin_diameter) - var(--pin_needle_thickness) / 2);
+            position: relative;
+            display: block;
+            width: var(--pin_needle_thickness);
+            height: var(--pin_needle_height);
+            border-radius: var(--pin_needle_blunt);
+            left: 50%;
+            transform: translate(-50%, 0);
+            background: white;
+        }
+
+
+        /* add profile btn */
+        .DB-profile_icon {
+            left: 50%;
+            position: relative;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 0.3rem;
+            height: var(--profile_icon_height);
+            width: var(--profile_icon_width);
+            border: solid white var(--profile_icon_thickness);
+        }
+
+        .DB-profile_icon::after {
+            content: "";
+            display: block;
+            width: calc(var(--profile_icon_width) + var(--profile_icon_thickness));
+            border-bottom: var(--profile_icon_thickness) solid white;
+            position: relative;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+
+        /* add note btn */
+        .DB-note_icon {
+            left: 50%;
+            position: relative;
+            top: 50%;
+            transform: translate(-50%, -50%);
+
+            border-radius: 0.3rem;
+            height: var(--note_icon_height);
+            width: var(--note_icon_width);
+            border: solid white var(--note_icon_thickness);
+        }
+
+        .DB-note_icon::after {
+            content: "";
+            background-color: white;
+            display: block;
+            width: calc(var(--note_icon_width) - var(--note_icon_thickness));
+            height: var(--note_icon_thickness);
+            position: relative;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 calc(var(--note_icon_thickness) * 2) white, 0 calc(var(--note_icon_thickness) * -2) white;
+        }
+
+
+        /* add frame btn */
+        .DB-frame_icon {
+            left: 50%;
+            position: relative;
+            top: 50%;
+            transform: translate(-50%, -50%);
+
+            border-radius: 0.3rem;
+            height: var(--profile_icon_height);
+            width: var(--profile_icon_width);
+            border: solid white var(--profile_icon_thickness);
+        }
+
+
+        /*** editable modes ***/
+        .DB-profile_editable>.DB-reverse_hidden,
+        .DB-note_editable>.DB-reverse_hidden,
+        .DB-frame_editable>.DB-reverse_hidden,
+        .DB-hidden {
+            visibility: hidden;
+        }
+
+        .DB-profile_editable>.DB-hidden,
+        .DB-note_editable>.DB-hidden,
+        .DB-frame_editable>.DB-hidden,
+        .DB-reverse_hidden {
+            visibility: visible;
+        }
+
+        /*** frames drag & drop ***/
+        .DB-allow_drag_drop .DB-frame {
+            pointer-events: all;
+        }
+
+        .DB-allow_drag_drop .DB-frame:not(.DB-being_dragged.DB-frame):hover::before,
+        .DB-allow_drag_drop .DB-frame_fill:not(.DB-being_dragged.DB-frame):hover::after {
+            content: "";
+            display: block;
+            position: absolute;
+
+            height: 100%;
+            width: 100%;
+            border-radius: 0.5rem;
+            background-color: rgba(66, 66, 66, 0.5);
+        }
+
+        .DB-being_dragged .DB-profile_move {
+            pointer-events: none;
+        }
+
+        .DB-being_dragged.DB-frame,
+        .DB-allow_drag_drop .DB-note,
+        .DB-allow_drag_drop .DB-profile,
+        .DB-allow_drag_drop .DB-pin {
+            pointer-events: none;
+        }
+
+        .DB-allow_drag_drop .DB-disable_drop {
+            pointer-events: none;
+        }
+
+        /*** placed within frame ***/
+        .DB-frame_placed {
+            outline: solid 0.4rem;
+        }
+
+        .DB-frame_placed.DB-pin,
+        .DB-frame_placed.DB-pin_location::before,
+        .DB-frame_placed.DB-pin_needle::after {
+            outline-width: 0.2rem;
+            outline-style: solid;
+        }
+
+        .DB-frame_placed.DB-pin_location {
+            outline-width: 0;
+        }
+
+
+        /*** lock overrides ***/
+
+        /* locked */
+        .DB-locked .DB-lock_icon,
+        .DB-locked .DB-lock_icon::before {
+            border-color: var(--locked_color);
+        }
+
+        .DB-locked .DB-lock_icon::after {
+            background-color: var(--locked_color);
+        }
+
+        .DB-locked {
+            background-color: #9d9d9d;
+        }
+
+        .DB-hide_outline_locked.DB-locked .DB-frame_placed {
+            outline: none;
+        }
+
+        .DB-locked .DB-icon_wrapper_right {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .DB-locked .DB-frame,
+        .DB-locked .DB-pin {
+            pointer-events: none;
+        }
+
+        .DB-locked .DB-frame,
+        .DB-locked .DB-note,
+        .DB-locked .DB-profile {
+            resize: none;
+        }
+
+        .DB-locked .DB-join_btn,
+        .DB-locked .DB-reverse_hidden,
+        .DB-locked .DB-hidden,
+        .DB-locked .DB-pencil_icon,
+        .DB-locked #DB-info_img_remove,
+        .DB-locked #DB-info_img_add,
+        .DB-locked .DB-frame_color,
+        .DB-locked .DB-note_html .DB-note_text {
+            visibility: hidden;
+        }
+
+        .DB-locked .DB-note_html .DB-note_html_text {
+            visibility: visible;
+        }
+
+        .DB-locked .DB-frame_text,
+        .DB-locked .DB-note_text,
+        .DB-locked .DB-profile_text {
+            background-color: transparent;
+            font-weight: bold;
+            border-width: 0;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .DB-locked .DB-frame_text::placeholder,
+        .DB-locked .DB-note_text::placeholder,
+        .DB-locked .DB-profile_text::placeholder {
+            color: transparent;
+        }
+
+
+        /* super locked */
+        .DB-super_locked .DB-lock_icon {
+            background-color: #afafaf;
+            border-radius: 50%;
+        }
+
+        .DB-super_locked .DB-profile_img {
+            pointer-events: none;
+        }
+
+        .DB-hide_outline_super_locked.DB-super_locked .DB-frame_placed {
+            outline: none;
+        }
+
+        @media (min-width: 1000px) {
+            .DB-arrow_wrapper {
+                height: 4rem;
+                border-radius: 50%;
+                margin: 0 0.5rem;
+            }
+
+            #DB-info_wrapper {
+                flex-direction: row;
+            }
+        }
+    </style>
+    <script src="index_demo_data.js" type="text/javascript" defer></script>
+    <style id="DB-custom_style"></style>
+</head>
+
+<body>
+    <div id="DB-loading" onmousedown="event.stopPropagation()">
+        <div id="DB-inner_loading">Loading...</div>
+    </div>
+    <div id="DB-options" onmousedown="event.stopPropagation()" onwheel="event.stopPropagation()">
+        <div class="DB-gear" onclick="show_setting()">
+            <div></div>
+        </div>
+        <span id="DB-title">UNTITLED</span>
+        <span class="DB-lock_icon" onclick="toggle_lock()"></span>
+        <div class="DB-hamburger" onclick="toggle_ham(event)">
+            <div class="DB-hamline"></div>
+        </div>
+    </div>
+
+    <div id="DB-catalogue" class="DB-closed DB-vis-frame DB-vis-profile DB-vis-note DB-vis-pin"
+        onmousedown="event.stopPropagation()" onwheel="event.stopPropagation()">
+        <div id="DB-catalogue-vis">
+            <div class="DB-frame_icon" onclick="toggle_vis('DB-vis-frame')"></div>
+            <div class="DB-profile_icon" onclick="toggle_vis('DB-vis-profile')"></div>
+            <div class="DB-note_icon" onclick="toggle_vis('DB-vis-note')"></div>
+            <div class="DB-pin_icon" onclick="toggle_vis('DB-vis-pin')"></div>
+        </div>
+        <div id="DB-cat-list">
+        </div>
+    </div>
+
+    <div id="DB-setting_screen" class="DB-screen_hidden" onmousedown="hide_setting()"
+        onmousedown="event.stopPropagation()" onwheel="event.stopPropagation()">
+        <div id="DB-setting_wrapper" onclick="event.stopPropagation()" onwheel="event.stopPropagation()"
+            onmousedown="event.stopPropagation()">
+            <div id="DB-setting_sidebar">
+                <div class="DB-setting_option DB-setting_option_active" onclick="toggle_setting_option(this,0)">Project</div>
+                <div class="DB-setting_option" onclick="toggle_setting_option(this,1)">Custom Css</div>
+                <div class="DB-setting_option" onclick="toggle_setting_option(this,2)">Export</div>
+                <div class="DB-setting_option" onclick="toggle_setting_option(this,3)">Import</div>
+                <div id="DB-setting_filler"></div>
+                <div class="DB-setting_bottom_option DB-setting_option" onclick="show_demo()">Demo</div>
+                <div class="DB-setting_bottom_option DB-setting_option" onclick="toggle_setting_option(this,4)">About</div>
+            </div>
+            <div id="DB-setting_main">
+                <div id="DB-setting_project" class="DB-screen_hidden DB-setting_profile_active">
+                    <span style="grid-column: 1;
+                    grid-row: 2;
+                    align-self: center;
+                    color: rgb(94 94 94);
+                    left: 45%;
+                    width: 50%;
+                    position: relative;">Project Title</span>
+                    <input id="DB-title_input" type="text" placeholder="UNTITLED"
+                        onchange="document.querySelector('#DB-title').innerText=(this.value==''?'UNTITLED':this.value)" />
+
+
+                    <span style="grid-column: 1;
+                    grid-row: 3;
+                    align-self: center;
+                    color: rgb(94 94 94);
+                    left: 45%;
+                    width: 50%;
+                    position: relative;"> Hide Frame Outline</span>
+
+                    <select id="DB-frame_outline" onchange="toggle_hide_outline()">
+                        <option value="0">Never</option>
+                        <option value="1">When Locked</option>
+                        <option value="2">When Super Locked</option>
+                    </select>
+
+                    <span style="grid-column: 1;
+                    grid-row: 4;
+                    align-self: center;
+                    color: rgb(94 94 94);
+                    left: 45%;
+                    width: 50%;
+                    position: relative;"> Deselect Join Button</span>
+
+                    <select id="DB-deselect_join" onchange="toggle_deselect_join()">
+                        <option value="0">Never</option>
+                        <option value="1" selected>After Creating Line</option>
+                    </select>
+
+                    <input id="DB-change_curr_origin" type="button" value="set current location as origin"
+                        onclick="change_origin()" />
+                </div>
+                <div id="DB-setting_custom_css" class="DB-screen_hidden">
+                    <textarea id="DB-custom_css"
+                        placeholder="Use 'DB-' to override the style of the site itself!&#13;&#10;&#13;&#10;e.g., #DB-title{ color:red } "></textarea>
+                    <input id="DB-custom_css_btn" onclick="set_custom_css()" type="button" disabled value="save" />
+                </div>
+                <div id="DB-setting_export" class="DB-screen_hidden" onclick="exporting_data()">
+                    Click to Export
+                </div>
+                <div id="DB-setting_import" class="DB-screen_hidden">
+                    Click to Import
+                    <input type="file" id="DB-import_selector" accept="application/json"
+                        onchange="importing_data(event)">
+                    <div style="height:100%;width:100%;cursor:pointer;position: absolute;"
+                        onclick="confirm_import(event)"></div>
+                </div>
+                <div id="DB-setting_about" class="DB-screen_hidden">
+                    <div style="font-weight: bold;
+                    font-size: 130%;
+                    color: black;
+                    margin-top: 1.5rem;">Virtual Bulletin Board -v1.5.5</div>
+                    <div style="font-style: italic;
+                    font-size: 80%;
+                    margin-top: 1rem">-Created by Manas Ravindra Makde</div>
+
+                    <div style="justify-self:center;align-self: end;padding:0 2rem">Enjoy!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="DB-info_screen" class="DB-screen_hidden" onmousedown="hide_info()" onmousedown="event.stopPropagation()"
+        onwheel="event.stopPropagation()">
+        <div id="DB-info_wrapper" readonly onclick="event.stopPropagation()" onwheel="event.stopPropagation()"
+            onmousedown="event.stopPropagation()">
+            <div id="DB-info_img_wrapper">
+
+                <div id="DB-info_img_add" onclick="add_img()"></div>
+                <div id="DB-info_img_remove" onclick="replace_img()"></div>
+
+                <div id="DB-slideshow_none">No Images</div>
+
+                <div id="DB-slideshow">
+                    <div class="DB-pic_wrapper"><img
+                            src="https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885__480.jpg"></div>
+                    <div class="DB-pic_wrapper"><img
+                            src="https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxzZWFyY2h8OHx8bWFufGVufDB8fDB8fA%3D%3D&w=1000&q=80">
+                    </div>
+                    <div class="DB-pic_wrapper"><img
+                            src="https://image.shutterstock.com/image-photo/extremely-wide-panorama-landscape-smoky-260nw-790687765.jpg">
+                    </div>
+                </div>
+
+                <button class="DB-arrow_wrapper DB-left_wrapper" onclick="slideshow_prev();"></button>
+                <button class="DB-arrow_wrapper DB-right_wrapper" onclick="slideshow_next();"></button>
+
+            </div>
+            <div id="DB-info_text_wrapper" class="DB-info_text_uneditable DB-info_textmode">
+                <div id="DB-info_mode" class="DB-info_textmode" onclick="toggle_info_mode()">
+                </div>
+                <div class="DB-pencil_icon" onclick="toggle_info_editable()">
+                </div>
+                <textarea id="DB-name_input" placeholder="Untitled" readonly></textarea>
+                <div id="DB-info_editor">
+                    <div id="DB-info_output"></div>
+                    <textarea id="DB-info_input" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="DB-set_lines_screen" class="DB-screen_hidden" onmousedown="hide_sample_line()"
+        onmousedown="event.stopPropagation()" onwheel="event.stopPropagation()">
+        <div id="DB-set_lines_wrapper" onclick="event.stopPropagation()" onwheel="event.stopPropagation()"
+            onmousedown="event.stopPropagation()">
+
+
+            <input type="color" id="DB-sample_line_text_color" oninput="change_sample_line_text_color()"
+                onmousedown="color_hold_wait(event)" onmouseup="color_cancel_hold(event)"
+                onclick="if(this.block_popup)event.preventDefault()" />
+            <input type="text" id="DB-sample_line_text" placeholder="Blank" />
+
+            <input type="color" id="DB-sample_line_color" value="#6b6b6b" oninput="change_sample_line_color()"
+                onmousedown="color_hold_wait(event)" onmouseup="color_cancel_hold(event)"
+                onclick="if(this.block_popup)event.preventDefault()" />
+            <svg height="10" width="150" id="DB-set_sample_line_wrapper">
+
+                <path id="DB-sample_line" fill="none" stroke="#6b6b6b" d="M 0 0 L 150 0" stroke-width="7" />
+
+                <text id="DB-sample_line_wrapper" font-size="50" text-anchor="middle" dy="-3">
+                    <textPath id="DB-sample_line_indicator" href="#DB-sample_line" startOffset="50%"
+                        dominant-baseline="central"></textPath>
+                </text>
+            </svg>
+
+            <input type="range" min="1" max="3" step="1" value="2" id="DB-sample_line_thickness"
+                oninput="update_sample_line()">
+            <input type="range" min="1" max="3" step="1" value="1" id="DB-sample_line_gap"
+                oninput="update_sample_line()">
+
+            <input type="button" id="DB-sample_line_arrow" value="" onclick="toggle_indicator()" />
+
+            <input type="button" id="DB-sample_line_reset" class="DB-reset" value="Reset"
+                onclick="copy_line_appearance()">
+        </div>
+    </div>
+
+    <div id="DB-set_profile_screen" class="DB-screen_hidden" onmousedown="hide_profile_screen()"
+        onmousedown="event.stopPropagation()" onwheel="event.stopPropagation()">
+        <div id="DB-set_profile_wrapper" onclick="event.stopPropagation()" onwheel="event.stopPropagation()"
+            onmousedown="event.stopPropagation()">
+
+            <div id="DB-shadow_label">Shadow </div><input id="DB-sample_profile_shadow" type="checkbox"
+                onclick="toggle_shadow()">
+            <input id="DB-profile_alpha" oninput="change_profile_color()" type="range" value="255" min="0" max="255"
+                step="1" />
+
+            <input id="DB-sample_profile_text_color" oninput="change_profile_text_color()" value="#363636" type="color"
+                onmousedown="color_hold_wait(event)" onmouseup="color_cancel_hold(event)"
+                onclick="if(this.block_popup)event.preventDefault()" />
+
+            <input id="DB-sample_profile_color" oninput="change_profile_color()" value="#363636" type="color"
+                onmousedown="color_hold_wait(event)" onmouseup="color_cancel_hold(event)"
+                onclick="if(this.block_popup)event.preventDefault()" />
+
+            <div id="DB-profile_text_wrapper">Title</div>
+            <div id="DB-profile_sample_wrapper"
+                style="box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 1px 3px 1px;background-color: rgba(255,255,255);color: rgba(0,0,0);">
+            </div>
+
+            <input type="button" class="DB-reset" value="Reset" onclick="copy_profile_appearance()">
+
+        </div>
+    </div>
+
+    <div id="DB-set_frame_screen" class="DB-screen_hidden" onmousedown="hide_frame_screen()"
+        onmousedown="event.stopPropagation()" onwheel="event.stopPropagation()">
+        <div id="DB-set_frame_wrapper" onclick="event.stopPropagation()" onwheel="event.stopPropagation()"
+            onmousedown="event.stopPropagation()">
+
+            <input id="DB-sample_frame_text_color" oninput="change_frame_text_color()" value="#363636" type="color"
+                onmousedown="color_hold_wait(event)" onmouseup="color_cancel_hold(event)"
+                onclick="if(this.block_popup)event.preventDefault()" />
+
+            <input id="DB-sample_frame_color" oninput="change_frame_color()" value="#363636" type="color"
+                onmousedown="color_hold_wait(event)" onmouseup="color_cancel_hold(event)"
+                onclick="if(this.block_popup)event.preventDefault()" />
+
+            <div id="DB-frame_text_wrapper">Title</div>
+            <div id="DB-frame_sample_wrapper" onclick="change_frame_mode()"></div>
+
+            <input id="DB-frame_alpha" oninput="change_frame_color()" type="range" value="255" min="0" max="255"
+                step="1" />
+
+            <input id="DB-frame_custom_back" placeholder="Image Link" type="text" />
+
+            <label id="DB-frame_repeat_label">Repeat</label> <input id="DB-frame_repeat" type="checkbox"
+                onchange="toggle_frame_repeat()" /> <input id="DB-frame_repeat_width" type="number" min="0" step="1"
+                placeholder="width" disabled />
+            <input type="button" class="DB-reset" value="Reset" onclick="copy_frame_appearance()">
+
+        </div>
+    </div>
+
+
+    <div id="DB-origin_wrapper" style="position:absolute;transform: scale(1)">
+        <div id="DB-origin">
+            <span id="DB-origin_icon"
+                style="position: absolute;transform: translate(-50%,-50%);display: inline-block;user-select: none;color:rgb(63, 63, 63)">+</span>
+            <div id="DB-frames_wrapper"></div>
+            <svg id="DB-lines_wrapper" style="pointer-events:none"></svg>
+            <div id="DB-things_wrapper"></div>
+        </div>
+    </div>
+
+    <div id="DB-loc_origin" title="Locate Origin" class="DB-icon_wrapper" onclick="locate_origin()"
+        onwheel="event.stopPropagation()" onmousedown="event.stopPropagation();">
+        <div
+            style="width: 1rem;height: 1rem;border: 0.2rem solid white;border-radius: 50%;position: relative;top: 50%;left: 50%;transform: translate(-50%, -50%);">
+        </div>
+    </div>
+
+    <div id="DB-loc_active" title="Locate Active" class="DB-icon_wrapper" onclick="locate_active()"
+        onwheel="event.stopPropagation()" onmousedown="event.stopPropagation();">
+        <div class="DB-active_icon"></div>
+    </div>
+
+    <div id="DB-add_pin" title="Add Pin" class="DB-icon_wrapper DB-icon_wrapper_right" style="right: 1rem;bottom: 1rem;"
+        onclick="add_new_pin(event)" onwheel="event.stopPropagation()" onmousedown="event.stopPropagation();">
+        <div class="DB-pin_icon"></div>
+    </div>
+
+    <div id="DB-add_note" title="Add Note" class="DB-icon_wrapper DB-icon_wrapper_right"
+        style="right: 5rem;bottom: 1rem;" onclick="add_new_note(event)" onwheel="event.stopPropagation()"
+        onmousedown="event.stopPropagation();">
+        <div class="DB-note_icon"></div>
+    </div>
+
+    <div id="DB-add_profile" title="Add profile" class="DB-icon_wrapper DB-icon_wrapper_right"
+        style="right: 9rem;bottom: 1rem;" onclick="add_new_profile(event)" onwheel="event.stopPropagation()"
+        onmousedown="event.stopPropagation();">
+        <div class="DB-profile_icon"></div>
+
+    </div>
+
+    <div id="DB-add_frame" title="Add frame" class="DB-icon_wrapper DB-icon_wrapper_right"
+        style="right: 13rem;bottom: 1rem;" onclick="add_new_frame(event)" onwheel="event.stopPropagation()"
+        onmousedown="event.stopPropagation();">
+        <div class="DB-frame_icon"></div>
+    </div>
+
+    <script>
+        let html_page = document.querySelector("html");
+        let body_page = document.querySelector("body");
+        let loading = document.querySelector("#DB-loading")
+        let custom_style = document.querySelector("#DB-custom_style");
+        let title = document.querySelector("#DB-title");
+        let catalogue = document.querySelector("#DB-catalogue");
+        let catalogue_list = document.querySelector("#DB-cat-list");
+        let setting_screen = document.querySelector("#DB-setting_screen");
+        let title_input = document.querySelector("#DB-title_input");
+        let frame_outline = document.querySelector("#DB-frame_outline");
+        let deselect_join = document.querySelector("#DB-deselect_join");
+        let import_selector = document.querySelector("#DB-import_selector")
+        let custom_css = document.querySelector("#DB-custom_css");
+        let custom_css_btn = document.querySelector("#DB-custom_css_btn");
+        let info_screen = document.querySelector("#DB-info_screen");
+        let slideshow = document.querySelector('#DB-slideshow');
+        let info_text_wrapper = document.querySelector("#DB-info_text_wrapper");
+        let name_input = document.querySelector("#DB-name_input");
+        let info_input = document.querySelector("#DB-info_input");
+        let info_output = document.querySelector("#DB-info_output");
+        let set_lines_screen = document.querySelector("#DB-set_lines_screen");
+        let sample_line = document.querySelector("#DB-sample_line");
+        let sample_line_thickness = document.querySelector("#DB-sample_line_thickness");
+        let sample_line_gap = document.querySelector("#DB-sample_line_gap");
+        let sample_line_wrapper = document.querySelector("#DB-sample_line_wrapper");
+        let sample_line_indicator = document.querySelector("#DB-sample_line_indicator");
+        let sample_line_arrow = document.querySelector("#DB-sample_line_arrow");
+        let sample_line_text = document.querySelector("#DB-sample_line_text");
+        let sample_line_text_color = document.querySelector("#DB-sample_line_text_color");
+        let sample_line_color = document.querySelector("#DB-sample_line_color");
+        let set_profile_screen = document.querySelector("#DB-set_profile_screen");
+        let sample_profile_shadow = document.querySelector("#DB-sample_profile_shadow")
+        let profile_text_wrapper = document.querySelector("#DB-profile_text_wrapper");
+        let profile_sample_wrapper = document.querySelector("#DB-profile_sample_wrapper");
+        let sample_profile_text_color = document.querySelector("#DB-sample_profile_text_color");
+        let sample_profile_color = document.querySelector("#DB-sample_profile_color");
+        let profile_alpha = document.querySelector("#DB-profile_alpha");
+        let set_frame_screen = document.querySelector("#DB-set_frame_screen");
+        let frame_text_wrapper = document.querySelector("#DB-frame_text_wrapper");
+        let frame_sample_wrapper = document.querySelector("#DB-frame_sample_wrapper");
+        let sample_frame_text_color = document.querySelector("#DB-sample_frame_text_color");
+        let sample_frame_color = document.querySelector("#DB-sample_frame_color");
+        let frame_alpha = document.querySelector("#DB-frame_alpha");
+        let frame_custom_back = document.querySelector("#DB-frame_custom_back");
+        let frame_repeat = document.querySelector("#DB-frame_repeat");
+        let frame_repeat_width = document.querySelector("#DB-frame_repeat_width");
+        let origin_wrapper = document.querySelector("#DB-origin_wrapper");
+        let origin = document.querySelector("#DB-origin");
+        let lines_wrapper = document.querySelector("#DB-lines_wrapper");
+        let things_wrapper = document.querySelector("#DB-things_wrapper");
+        let frames_wrapper = document.querySelector("#DB-frames_wrapper");
+
+
+        // #99e7fe
+        // initial constants //
+        const color_options = [
+            "#99e7fe", //blue
+            "#bfffa8", //green
+            "#fcff61", //yellow
+            "#ffb887", //orange
+            "#f9a8ff", //pink
+            "#d2ccff", //violet
+            "#b000b5", //purple
+            "#6b6b6b", //gray
+            "#ffffff", //white
+            "#000000"  //black
+        ];
+        const profile_shadow = "rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 1px 3px 1px";
+
+        // intial variables //
+
+        let _NC = false; // Not Chrome
+        let move_time = 1000; //time taken to autoscroll to locations (in ms)
+
+        var _startX = 0;
+        var _startY = 0;
+        var _offsetX = 0;
+        var _offsetY = 0;
+
+        let scale = 1; // zoom in/out scale
+
+        var info_editable = false; //checks if casefile is editable or not
+        let slideshow_length = 0; //number of images in casefile slideshow
+
+        let slideshow_index = 0; //the current index of the image on the slideshow
+
+        var line_active_el = null; //element which currently has the join button active
+        let active_info_el = null; //profile element whose casefile is current being seen
+
+        let line_latest = 0; //number of times lines have been created
+        let to_deselect_join = 1; //Setting for when to deselect join button, 0=Never , 1=After creating Line
+
+        let import_data;
+        let complete_data = new WeakMap(); //stores all data of profiles, notes, pins & frames (like casefile info, connecting lines, text, etc)
+
+        let zoom_out = 0.04
+        /// helper functon ///
+        const rgba2hex = (rgba) => `#${rgba.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+\.{0,1}\d*))?\)$/).slice(1).map((n, i) => (i === 3 ? Math.round(parseFloat(n) * 255) : parseFloat(n)).toString(16).padStart(2, '0').replace('NaN', '')).join('')}`; // converts rgba to hex
+        function hiddenLineLength(width, height, xB, yB, xA, yA) { // returns length of line segment hidden behind an item to correct for the visual center of line text 
+
+            var w = width / 2;
+            var h = height / 2;
+            var dx = xA - xB;
+            var dy = yA - yB;
+
+            if (dx == 0 && dy == 0)
+                return 0;
+
+            var tan_phi = h / w;
+            var tan_theta = Math.abs(dy / dx);
+            var qx = Math.sign(dx);
+            var qy = Math.sign(dy);
+
+            if (tan_theta > tan_phi) {
+                xI = xB + (h / tan_theta) * qx;
+                yI = yB + h * qy;
+            }
+            else {
+                xI = xB + w * qx;
+                yI = yB + w * tan_theta * qy;
+            }
+
+            return Math.sqrt((xI - xB) ** 2 + (yI - yB) ** 2)
+        }
+
+
+        /// common functions ///
+        function show_elements(...args) { //unhides all given elements
+            args.forEach(el => { el.classList.remove("DB-hidden") });
+        }
+        function hide_elements(...args) { //hides all given elements
+            args.forEach(el => { el.classList.add("DB-hidden") });
+        }
+
+        function delete_element(el, confirmation = false) { // asks for confirmation & then deletes item and safely removes it from complete data
+
+            if (confirmation && !confirm("Are you sure you want to delete?"))
+                return false;
+
+            if (line_active_el == el)
+                line_active_el = null;
+
+            if (el.classList.contains("DB-frame"))
+                complete_data.get(el)["inside"].forEach((element) => {
+                    element.classList.remove("DB-frame_placed");
+                    complete_data.get(element)["frame"] = null;
+                });
+            else
+                complete_data.get(el)["all"].forEach(to_el => { remove_line(el, to_el, true) });
+
+            remove_from_frame(el)
+
+            complete_data.delete(el);
+            el.remove();
+
+            return true;
+        }
+
+        function triggerMouseEvent(node, eventType) { // simulates mouse events like click, mousedown, mouseup, etc
+            var clickEvent = document.createEvent('MouseEvents');
+            clickEvent.initEvent(eventType, true, true);
+            node.dispatchEvent(clickEvent);
+        }
+
+        function bring_front_back(el, shift, ctrl) { // changes position of item within parent frame to either be frontmost or backmost
+            if (shift)
+                el.parentElement.lastChild.after(el);
+            else if (ctrl)
+                el.parentElement.firstChild.before(el);
+        }
+
+        let color_hold_wait = (e) => { //shows custom color picker when held
+            e.target.block_popup = false;
+            e.target.hold_timeout = setTimeout(() => { e.target.click() }, 500);
+        }
+        let color_cancel_hold = (e) => { //toggles between colors to set for picker color when clicked once instead of held
+            e.target.block_popup = true;
+            if (!(++e.target.color_index < color_options.length))
+                e.target.color_index = 0;
+
+            e.target.value = color_options[e.target.color_index];
+
+            e.target.oninput();
+            clearTimeout(e.target.hold_timeout);
+        }
+
+
+        /// Moving & Scaling functions ///
+        let _dropElement = null;
+        function set_draggable(event, _dragElement) { // allows user to grab, drag and place an item to some other location
+
+            grab(event, _dragElement)
+
+            if (event.altKey)
+                if (event.ctrlKey)
+                    remove_from_frame(_dragElement, null, true);
+                else {
+                    _dropElement = _dragElement;
+                    _dropElement.classList.add("DB-being_dragged");
+                    origin.classList.add("DB-allow_drag_drop");
+                    if (_dragElement.classList.contains("DB-frame"))
+                        toggle_child_frames(_dropElement, false);
+                }
+
+            _dragElement.onmouseup = (e) => release(e, _dragElement,
+                _dragElement.classList.contains("DB-note") ||
+                _dragElement.classList.contains("DB-profile") ||
+                _dragElement.classList.contains("DB-pin")
+            );
+        }
+
+        const motion = (event, _dragElement) => { // changes position of item that is being dragged when mouse moves
+            _dragElement.style.left = (_offsetX + event.clientX - _startX) / scale + 'px';
+            _dragElement.style.top = (_offsetY + event.clientY - _startY) / scale + 'px';
+        }
+        const motion_with_lines = (event, _dragElement) => { // changes position of item (and the lines attached to it) that is being dragged when mouse moves
+
+            _dragElement.style.left = (_offsetX + event.clientX - _startX) / scale + 'px';
+            _dragElement.style.top = (_offsetY + event.clientY - _startY) / scale + 'px';
+
+            move_all_lines(_dragElement);
+
+            // event.stopPropagation();
+        }
+        const motion_with_frame = (event, _dragElement) => { // changes position of frame (and the items bound to it) that is being dragged when mouse moves
+
+            let prev_left = parseFloat(_dragElement.style.left);
+            let prev_top = parseFloat(_dragElement.style.top);
+
+            let new_left = (_offsetX + event.clientX - _startX) / scale;
+            let new_top = (_offsetY + event.clientY - _startY) / scale;
+
+            _dragElement.style.left = new_left + 'px';
+            _dragElement.style.top = new_top + 'px';
+
+
+            complete_data.get(_dragElement)["inside"].forEach(el => {
+
+                let carry_left = parseFloat(el.style.left) + (new_left - prev_left);
+                let carry_top = parseFloat(el.style.top) + (new_top - prev_top);
+
+                if (el.classList.contains("DB-frame"))
+                    rec_move_with_frame(carry_left, carry_top, el);
+                else {
+                    el.style.left = carry_left + "px";
+                    el.style.top = carry_top + "px";
+                    move_all_lines(el);
+                }
+            });
+
+            // event.stopPropagation();
+        }
+
+        function rec_move_with_frame(c_left, c_top, c_el) {  //recursively moves frame & the items bound to it
+
+            let prev_left = parseFloat(c_el.style.left);
+            let prev_top = parseFloat(c_el.style.top);
+
+            let new_left = c_left;
+            let new_top = c_top;
+
+            c_el.style.left = new_left + 'px';
+            c_el.style.top = new_top + 'px';
+
+            complete_data.get(c_el)["inside"].forEach(el => {
+                let carry_left = parseFloat(el.style.left) + (new_left - prev_left);
+                let carry_top = parseFloat(el.style.top) + (new_top - prev_top);
+
+                el.style.left = carry_left + "px";
+                el.style.top = carry_top + "px";
+
+                if (el.classList.contains("DB-frame"))
+                    rec_move_with_frame(carry_left, carry_top, el);
+                else
+                    move_all_lines(el);
+            });
+
+        }
+
+        const grab = (event, _dragElement, is_origin = false, _other = null) => { // moves an item or moves the entire plane depending on what is being dragged
+
+            if (is_origin) {
+                document.onmousemove = (e) => motion(e, _dragElement);
+
+                var origin_rect = origin.getBoundingClientRect();
+                var origin_wrapper_rect = origin_wrapper.getBoundingClientRect();
+                origin.style.left = (origin_rect.left - origin_wrapper_rect.left) / scale + "px";
+                origin.style.top = (origin_rect.top - origin_wrapper_rect.top) / scale + "px";
+                origin.classList.remove("DB-origin_moving")
+            }
+            else {
+
+                if (_other == null) {
+                    if (_dragElement.classList.contains("DB-frame")) {
+                        if (event.shiftKey)
+                            document.onmousemove = (e) => motion(e, _dragElement);
+                        else
+                            document.onmousemove = (e) => motion_with_frame(e, _dragElement);
+                    }
+                    else
+                        document.onmousemove = (e) => motion_with_lines(e, _dragElement);
+                }
+                else
+                    _other.onmousemove = (e) => motion(e, _dragElement);
+
+                bring_front_back(_dragElement, event.shiftKey, event.ctrlKey);
+            }
+
+            html_page.classList.add("DB-dragging");
+
+            _startX = event.clientX;
+            _startY = event.clientY;
+            _offsetX = _dragElement.offsetLeft * scale;
+            _offsetY = _dragElement.offsetTop * scale;
+
+
+            event.stopPropagation();
+        }
+        const release = (event, _dragElement, to_correct_lines = false, _other = null) => { // stops dragging item or plane when mouse click is released
+            if (_other != null)
+                _other.onmousemove = null;
+
+            document.onmousemove = null;
+            _dragElement.onmouseup = null;
+
+            if (_dropElement != null) {
+
+                _dropElement.onmouseup = null;
+
+                let within_items = document.elementsFromPoint(event.clientX, event.clientY);
+
+                let frame_el = null
+                for (i = 0; i < within_items.length; i++)
+                    if (within_items[i].classList.contains("DB-frame")) {
+                        frame_el = within_items[i];
+                        break;
+                    }
+
+                if (_dropElement.classList.contains("DB-frame"))
+                    toggle_child_frames(_dropElement, true);
+
+                _dropElement.classList.remove("DB-being_dragged");
+                origin.classList.remove("DB-allow_drag_drop");
+
+                add_to_frame(frame_el, _dropElement);
+
+                _dropElement = null;
+            }
+
+            html_page.classList.remove("DB-dragging");
+
+            if (to_correct_lines)
+                correct_all_lines(_dragElement);
+            event.stopPropagation();
+        }
+        const zoom = (event) => { // zooms in or out of entire plane
+            scale += event.deltaY * -0.0005;
+            scale = Math.min(Math.max(zoom_out, scale), 4);
+            origin_wrapper.style.transform = `scale(${scale})`;
+        }
+
+
+        // lock functions //
+        let lock_type = 0; // 0 is unlock, 1 is lock, 2 is superlock (can't even see profile details popup)
+        function toggle_lock(lock_only = false) { // toggles lock between different modes
+            // let temp_active_el=line_active_el;
+            if (lock_only) {
+                lock_type = 2;
+                body_page.classList.add("DB-locked");
+                body_page.classList.add("DB-super_locked");
+            }
+            else {
+                if (++lock_type > 2)
+                    lock_type = 0;
+
+                if (lock_type == 0) {
+                    body_page.classList.remove("DB-locked");
+                    body_page.classList.remove("DB-super_locked");
+                }
+                if (lock_type > 0)
+                    body_page.classList.add("DB-locked");
+                if (lock_type > 1)
+                    body_page.classList.add("DB-super_locked");
+            }
+
+            if (line_active_el != null) {
+
+                var temp_active = line_active_el;
+
+                var toggle_el = line_active_el.querySelector(":scope > .DB-join_active");
+                triggerMouseEvent(toggle_el, "mousedown");
+
+                if (temp_active.classList.contains("DB-pin"))
+                    triggerMouseEvent(toggle_el, "focusout");
+            }
+        }
+
+        /// add to frame ///
+        function toggle_child_frames(frame, enable = false) { //enables or disables "drag and drop into" hover highlight of child frames
+            complete_data.get(frame)["inside"].forEach(el => {
+                if (el.classList.contains("DB-frame")) {
+                    if (enable)
+                        el.classList.remove("DB-disable_drop");
+                    else
+                        el.classList.add("DB-disable_drop");
+
+                    toggle_child_frames(el, enable);
+                }
+
+            })
+        }
+        function remove_from_frame(el, curr_frame = null, into_none = false) { //removes item from frame bound
+
+            if (curr_frame == null) //imp
+                curr_frame = complete_data.get(el)["frame"];
+
+            if (curr_frame != null) {
+                let frame_arr = complete_data.get(curr_frame)["inside"];
+                frame_arr.splice(frame_arr.indexOf(el), 1);
+                complete_data.get(el)["frame"] = null;
+            }
+
+            if (into_none) {
+                el.classList.remove("DB-frame_placed");
+                el.style.outlineColor = "transparent";
+            }
+        }
+        function add_to_frame(frame, _dropElement) { // adds item to frame bound i.e. moves along with it
+
+            let curr_frame = complete_data.get(_dropElement)["frame"];
+            if (curr_frame == frame)
+                return;
+
+            remove_from_frame(_dropElement, curr_frame, frame == null)
+
+            if (frame != null) { //placed into another frame
+
+                if (frame.style.borderColor == "rgba(0, 0, 0, 0)")
+                    _dropElement.style.outlineColor = frame.style.backgroundColor;
+                else
+                    _dropElement.style.outlineColor = frame.style.borderColor;
+
+                complete_data.get(frame)["inside"].push(_dropElement);
+                complete_data.get(_dropElement)["frame"] = frame;
+                _dropElement.classList.add("DB-frame_placed");
+            }
+        }
+
+
+        /// origin functions ///
+        async function locate_origin(transition = true) { // autoscrolls back plane to origin center
+            if (transition)
+                origin.classList.add("DB-origin_moving");
+            else
+                origin.classList.remove("DB-origin_moving");
+
+            origin.style.left = "0px";
+            origin.style.top = "0px";
+        }
+        const reset_origin = async (transition = true, to_locate = true) => { // changes origin center when window is resized
+            origin_wrapper.style.left = window.innerWidth / 2 + "px";
+            origin_wrapper.style.top = window.innerHeight / 2 + "px";
+
+            if (to_locate)
+                locate_origin(transition);
+        }
+
+
+        /// locate items ///
+        async function locate_el(el, to_front = null, to_back, transition = true) { // scrolls plane into given element view
+            if (transition)
+                origin.classList.add("DB-origin_moving");
+            else
+                origin.classList.remove("DB-origin_moving");
+
+            origin.style.left = -el.offsetWidth / 2 + parseFloat(el.style.left) * -1 + "px";
+            origin.style.top = -el.offsetHeight / 2 + parseFloat(el.style.top) * -1 + "px";
+
+            if (to_front != null)
+                bring_front_back(el, to_front, to_back);
+        }
+        async function locate_active(transition = true) { // scrolls plane into currently active join button view
+
+            if (line_active_el == null)
+                return;
+
+            locate_el(line_active_el)
+        }
+
+
+        ////// line customization //////
+        let sample_indi = 0; // the arrow indicator of sample line during customization, 0="", 1="◄", 2="►"
+        function indi_from_symbol(indicator) { //returns indicator type from symbol
+            if (indicator == "◄") //inwards
+                return 1;
+            else if (indicator == "►") //outwards
+                return 2;
+            else
+                return 0;
+        }
+        function copy_line_appearance() { //sample line copies apperance of line which is currently being edited
+
+            var line_color = active_line.getAttribute("stroke");
+            sample_line_color.value = line_color;
+            sample_line.setAttribute("stroke", line_color);
+            sample_line.setAttribute("stroke-dasharray", active_line.getAttribute("stroke-dasharray"));
+            sample_line.setAttribute("stroke-width", active_line.getAttribute("stroke-width"));
+
+            var pseudo_line_id = active_line.id.substring(3);
+            var temp_line_text = document.querySelector("#DB-text" + pseudo_line_id);
+            sample_line_wrapper.setAttribute("font-size", temp_line_text.getAttribute("font-size"));
+
+            var temp_line_txt = document.querySelector("#DB-text" + pseudo_line_id + ' textPath:nth-of-type(1)');
+            sample_line_text_color.value = temp_line_txt.getAttribute("fill");
+            sample_line_text.value = temp_line_txt.innerHTML;
+            sample_line_text.style.color = sample_line_text_color.value;
+
+            sample_line_thickness.stepDown(3);
+            sample_line_thickness.stepUp(parseInt(active_line.getAttribute("data-thickness")) - 1);
+
+            sample_line_gap.stepDown(3);
+            sample_line_gap.stepUp(parseInt(active_line.getAttribute("data-gap")) - 1);
+
+            update_sample_line();
+
+            var temp_line_indicator = document.querySelector("#DB-text" + pseudo_line_id + ' textPath:nth-of-type(2)')
+            sample_line_indicator.setAttribute("fill", temp_line_indicator.getAttribute("fill"));
+
+            sample_indi = indi_from_symbol(document.querySelector("#DB-text" + pseudo_line_id + ' tspan').indi_direction); // returns index of indicator
+
+            get_indicator_symbol(sample_indi, false, (complete_data.get(line_active_el)["to"].get(selected_line_el) == null));
+
+        }
+        function hide_sample_line() { // hides customization screen and modifies the line appreance to ressemble sample line
+
+            active_line.setAttribute("data-thickness", sample_line_thickness.value);
+            active_line.setAttribute("data-gap", sample_line_gap.value);
+            set_similar_sample_line(active_line);
+            set_lines_screen.classList.add("DB-screen_hidden");
+
+            if (to_deselect_join) {
+                let active_join = document.querySelector(".DB-join_active")
+                active_join.onmousedown()
+                if (active_join.parentElement.force_hide != undefined)
+                    active_join.parentElement.force_hide()
+            }
+        }
+
+        function get_gap(thickness, gap) { // returns line gap according to the line thickness
+
+            if (thickness < 3) {
+                if (gap == 2)
+                    return "27 15";
+                else if (gap == 3)
+                    return "8 5";
+            }
+            else if (gap == 2)
+                return "45 27";
+            else if (gap == 3)
+                return "15 15";
+
+            return "0";
+        }
+        function get_thickness(thickness) { // gets thickness width of line
+
+            if (thickness == 1)
+                return 2;
+            else if (thickness == 2)
+                return 7
+            else if (thickness == 3)
+                return 15;
+
+            return 0
+        }
+        function get_fontSize(thickness) { // changes font size according to thickness of line
+            if (thickness == 1)
+                return 40;
+            else if (thickness == 2)
+                return 60;
+            else if (thickness == 3)
+                return 90;
+
+            return 0;
+        }
+        function get_dy(thickness) { // correction for arrow indicator center
+            if (thickness == 1)
+                return -3.5;
+            else if (thickness == 2)
+                return -5;
+            else if (thickness == 3)
+                return -7;
+
+            // return 0;
+        }
+        function get_indicator_symbol(indx, no_set = false, inverse = false) { // returns indicator arrow symbol
+
+            var indicator_symbol;
+            if (inverse && indx != 0)
+                indx = (indx == 1 ? 2 : 1);
+
+            if (indx == 0) {
+                indicator_symbol = "";
+                if (no_set) return indicator_symbol;
+                sample_line_arrow.value = "None";
+            }
+            else if (indx == 1) { //indicator points towards
+                indicator_symbol = "◄";
+                if (no_set) return indicator_symbol;
+                sample_line_arrow.value = "Inwards";
+            }
+            else if (indx == 2) { //indicator points away
+                indicator_symbol = "►";
+                if (no_set) return indicator_symbol;
+                sample_line_arrow.value = "Outwards";
+            }
+
+            sample_indi = indx;
+            sample_line_indicator.innerHTML = indicator_symbol;
+        }
+
+        function update_sample_line() { // updates sample line to currently set parameters
+            sample_line.setAttribute("stroke-dasharray", get_gap(sample_line_thickness.value, sample_line_gap.value))
+            sample_line.setAttribute("stroke-width", get_thickness(sample_line_thickness.value))
+            sample_line_indicator.setAttribute("font-size", get_fontSize(sample_line_thickness.value))
+            sample_line_wrapper.setAttribute("dy", get_dy(sample_line_thickness.value));
+        }
+
+        function toggle_indicator(set_only = false) { // toggles the arrow indicator of sample line
+            if (!set_only)
+                sample_indi++;
+
+            if (sample_indi > 2) sample_indi = 0;
+
+            get_indicator_symbol(sample_indi);
+        }
+        function change_sample_line_color() { // changes the color of sample line
+            sample_line.setAttribute("stroke", sample_line_color.value);
+            sample_line_wrapper.setAttribute("fill", sample_line_color.value);
+            sample_line_indicator.setAttribute("fill", sample_line_color.value);
+        }
+        function change_sample_line_text_color() { // changes the color of sample line text
+            sample_line_text.style.color = sample_line_text_color.value;
+        }
+
+
+        /// line functions ///
+        let line_exists = false; // indicates if line exits between 2 items & if not then indicates to adds one  
+        let line_toggle_timeout; // timeout for checking if join button is held for customization or clicked for adding/removing line
+        let active_line = null; // points towards the line that is being customized
+        let selected_line_el = null; // points towards the item whose join button was used to add/remove/edit the line
+
+        const customize_line = (el) => { // shows the customization screen for line
+            el.removeEventListener("mouseup", line_toggle_addrem);
+            clearTimeout(line_toggle_timeout);
+
+            if (line_exists)
+                active_line = get_line_between(el, line_active_el);
+            else
+                active_line = add_line(el, line_active_el);
+
+            selected_line_el = el;
+            copy_line_appearance()
+
+            set_lines_screen.classList.remove("DB-screen_hidden")
+        }
+        const line_toggle_addrem = (e) => { // add / removes lines
+            e.currentTarget.removeEventListener("mouseup", line_toggle_addrem)
+            clearTimeout(line_toggle_timeout)
+
+            if (line_exists) //removes lines
+                remove_line(e.currentTarget, line_active_el);
+            else //adds line
+                add_line(e.currentTarget, line_active_el);
+
+            if (to_deselect_join) {
+                let active_join = document.querySelector(".DB-join_active")
+                active_join.onmousedown()
+                if (active_join.parentElement.force_hide != undefined)
+                    active_join.parentElement.force_hide()
+            }
+
+            e.stopPropagation();
+        }
+        const set_join_active = (element, join_btn, active = true, pin = false, focin = null, focout = null) => { // sets join button as active (outlines it)
+            if (active) {
+                join_btn.classList.add("DB-join_active");
+                if (pin) {
+                    element.removeEventListener("focusin", focin);
+                    element.removeEventListener("focusout", focout);
+                }
+            }
+            else {
+                join_btn.classList.remove("DB-join_active");
+                if (pin) {
+                    element.addEventListener("focusin", focin);
+                    element.addEventListener("focusout", focout);
+                }
+            }
+        }
+        const join_click = (e = null, element, join_btn, pin = false, focin = null, focout = null) => { // functionality for clicking on join button
+
+            if (line_active_el == null) { //activates join_btn
+                line_active_el = element;
+                set_join_active(element, join_btn, true, pin, focin, focout);
+            }
+            else if (line_active_el == element) {
+                line_active_el = null;
+                set_join_active(element, join_btn, false, pin, focin, focout);
+            }
+            else {
+                line_exists = (complete_data.has(line_active_el) && complete_data.get(line_active_el)["to"].has(element));
+
+                element.addEventListener("mouseup", line_toggle_addrem)
+                line_toggle_timeout = setTimeout(() => customize_line(element), 500)
+            }
+            if (e != null)
+                e.stopPropagation();
+        }
+
+        function set_similar_sample_line(line) { //currently editing line copies sample line
+            line.setAttribute("stroke", sample_line.getAttribute("stroke"));
+            line.setAttribute("stroke-dasharray", sample_line.getAttribute("stroke-dasharray"));
+            line.setAttribute("stroke", sample_line.getAttribute("stroke"));
+            line.setAttribute("stroke-width", sample_line.getAttribute("stroke-width"));
+            var pseudo_line_id = line.id.substring(3);
+            var line_textwrapper = document.querySelector(`#DB-text${pseudo_line_id}`);
+
+            var line_txt = document.querySelector(`#DB-text${pseudo_line_id} textPath:nth-of-type(1)`);
+            line_txt.setAttribute('fill', sample_line_text_color.value);
+            line_txt.innerHTML = sample_line_text.value;
+
+
+            var line_indicator = document.querySelector(`#DB-text${pseudo_line_id} textPath:nth-of-type(2)`);
+            line_indicator.setAttribute("fill", sample_line_color.value);
+            line_indicator.setAttribute("font-size", sample_line_indicator.getAttribute("font-size"));
+
+            var tspan_indicator = document.querySelector(`#DB-text${pseudo_line_id} tspan`);
+
+
+            tspan_indicator.indi_direction = get_indicator_symbol(sample_indi, true, complete_data.get(line_active_el)["to"].get(selected_line_el) == null);
+
+            if (line.getAttribute("data-invert") == "1")
+                tspan_indicator.innerHTML = tspan_indicator.indi_direction;
+            else
+                tspan_indicator.innerHTML = inverse_indi_symbol(tspan_indicator.indi_direction);
+
+            tspan_indicator.setAttribute('dy', sample_line_wrapper.getAttribute("dy"));
+        }
+
+        function add_line(from, to, pre_text = null, pre_gap = null, pre_thickness = null, pre_indicator = 0, pre_text_color = null, pre_line_color = null) { //creates and adds new line 
+
+            let line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.id = `DB-line${line_latest}`;
+            lines_wrapper.appendChild(line);
+
+            let line_textwrapper = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            line_textwrapper.id = `DB-textline${line_latest}`;
+            line_textwrapper.setAttribute("dy", "-40")//sample_line_indicator_wrapper.getAttribute("dy"));
+            line_textwrapper.setAttribute("text-anchor", "middle");
+            lines_wrapper.appendChild(line_textwrapper);
+
+            let line_txt = document.createElementNS('http://www.w3.org/2000/svg', 'textPath'); //contains the text of the line
+            line_txt.setAttribute('href', "#" + line.id);
+            line_txt.setAttribute('startOffset', "50%");
+            line_txt.setAttribute('dy', "-45");
+            line_textwrapper.appendChild(line_txt);
+
+            let line_indicator = document.createElementNS('http://www.w3.org/2000/svg', 'textPath'); //contains the indicator ( ► )
+            line_indicator.setAttribute('href', "#" + line.id);
+            line_indicator.setAttribute('startOffset', "50%");
+            line_indicator.setAttribute('dominant-baseline', "central");
+            line_indicator.setAttribute('alignment-baseline', "central");
+            let tspan_indicator = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+            line_indicator.appendChild(tspan_indicator)
+            line_textwrapper.appendChild(line_indicator)
+            line_textwrapper.setAttribute("font-size", "50");
+
+
+
+            var x1 = parseFloat(from.style.left) + from.offsetWidth / 2;
+            var y1 = parseFloat(from.style.top) + from.offsetHeight / 2;
+
+            if (pre_text == null) {
+
+                line.setAttribute("data-gap", sample_line_gap.value);
+                line.setAttribute("data-thickness", sample_line_thickness.value);
+                selected_line_el = to;
+
+
+                let from_obj = complete_data.get(from);
+                from_obj["all"].push(to);
+                from_obj["to"].set(to, line);
+
+                let to_obj = complete_data.get(to);
+                to_obj["all"].push(from);
+                to_obj["to"].set(from, null);
+
+
+                indicator_correction(from, to, x1, y1, pre_indicator);
+
+                set_similar_sample_line(line);
+            }
+            else {
+
+                line_txt.innerHTML = pre_text;
+                tspan_indicator.indi_direction = get_indicator_symbol(pre_indicator);
+
+                line.setAttribute("data-gap", pre_gap);
+                line.setAttribute("data-thickness", pre_thickness);
+                line.setAttribute("stroke-dasharray", get_gap(pre_thickness, pre_gap));
+                line.setAttribute("stroke-width", get_thickness(pre_thickness));
+                line_indicator.setAttribute("font-size", get_fontSize(pre_thickness))
+                tspan_indicator.setAttribute("dy", get_dy(pre_thickness)); //doubt
+
+                line_txt.setAttribute("fill", pre_text_color);
+
+                line.setAttribute("stroke", pre_line_color);
+                line_indicator.setAttribute("fill", pre_line_color);
+
+                indicator_correction(from, to, x1, y1, pre_indicator, line);
+            }
+
+            line_latest++;
+
+            return line;
+        }
+        function remove_line(from, to, is_specific = false) { //removes line & it's data
+
+            var temp_line = get_line_between(from, to);
+            lines_wrapper.removeChild(lines_wrapper.querySelector("#DB-text" + temp_line.id.substring(3)))
+            lines_wrapper.removeChild(temp_line);
+
+            if (!is_specific) {
+                complete_data.get(from)["to"].delete(to);
+                var from_all = complete_data.get(from)["all"];
+                from_all.splice(from_all.indexOf(to), 1);
+            }
+
+            complete_data.get(to)["to"].delete(from);
+            var to_all = complete_data.get(to)["all"];
+            to_all.splice(to_all.indexOf(from), 1);
+
+        }
+
+        function inverse_indi_symbol(val) { //return the inverse indicator symbol
+            if (val == "◄")
+                return "►";
+            else if (val == "►")
+                return "◄";
+
+            return "";
+        }
+
+        function line_center_correction(line_textwrapper, tspan_indicator, to, from, x1, y1, x2, y2) { // corrects line for visual center of indicator arrow and text
+            let correction_dx;
+            if (x2 > x1)
+                correction_dx = (hiddenLineLength(from.offsetWidth, from.offsetHeight, x1, y1, x2, y2) - hiddenLineLength(to.offsetWidth, to.offsetHeight, x2, y2, x1, y1)) / 2
+            else
+                correction_dx = (hiddenLineLength(to.offsetWidth, to.offsetHeight, x2, y2, x1, y1) - hiddenLineLength(from.offsetWidth, from.offsetHeight, x1, y1, x2, y2)) / 2
+
+            line_textwrapper.setAttribute("dx", correction_dx);
+            tspan_indicator.setAttribute("dx", correction_dx);
+        }
+
+        function indicator_correction(from_el, to_el, x1, y1, given_indicator = null, given_line = null) { // sets correction for indicator according to the direction of line
+            var x2 = parseFloat(to_el.style.left) + to_el.offsetWidth / 2;
+            var y2 = parseFloat(to_el.style.top) + to_el.offsetHeight / 2;
+
+            var line = (given_line == null ? complete_data.get(from_el)["to"].get(to_el) : given_line);
+
+            var tspan_indicator
+
+            var exchange = false;
+
+
+            if (line == null) {
+                line = complete_data.get(to_el)["to"].get(from_el);
+
+                tspan_indicator = lines_wrapper.querySelector("#DB-text" + line.id.substring(3) + ' tspan');
+
+                if (given_indicator != null) {
+                    if (given_line == null)
+                        tspan_indicator.indi_direction = get_indicator_symbol(given_indicator, true, complete_data.get(line_active_el)["to"].get(selected_line_el) == null);
+                    else
+                        tspan_indicator.indi_direction = get_indicator_symbol(given_indicator, true);
+                }
+
+                if (x2 > x1) {
+                    tspan_indicator.innerHTML = inverse_indi_symbol(tspan_indicator.indi_direction);
+                    line.setAttribute("data-invert", "");
+
+                }
+                else {
+                    line.setAttribute("data-invert", "1");
+                    tspan_indicator.innerHTML = tspan_indicator.indi_direction;
+
+                    exchange = true;
+                }
+            }
+            else {
+
+                tspan_indicator = lines_wrapper.querySelector("#DB-text" + line.id.substring(3) + ' tspan');
+
+                if (given_indicator != null) {
+                    if (given_line == null)
+                        tspan_indicator.indi_direction = get_indicator_symbol(given_indicator, true, complete_data.get(line_active_el)["to"].get(selected_line_el) == null);
+                    else
+                        tspan_indicator.indi_direction = get_indicator_symbol(given_indicator, true);
+                }
+
+                if (x1 > x2) {
+                    line.setAttribute("data-invert", "");
+                    tspan_indicator.innerHTML = inverse_indi_symbol(tspan_indicator.indi_direction);
+
+                    exchange = true;
+                }
+                else {
+                    line.setAttribute("data-invert", "1");
+                    tspan_indicator.innerHTML = tspan_indicator.indi_direction;
+                }
+            }
+
+
+            if (exchange)
+                line.setAttribute("d", `M ${x2} ${y2} L ${x1} ${y1}`);
+            else
+                line.setAttribute("d", `M ${x1} ${y1} L ${x2} ${y2}`);
+
+            line_center_correction(document.querySelector(`#DB-text${line.id.substring(3)}`), tspan_indicator, to_el, from_el, x1, y1, x2, y2);
+        }
+
+        function correct_all_lines(el) { // makes sure the text is always upright and indicator is pointing in the right direction
+
+            let from_all = complete_data.get(el)["all"];
+
+            var x1 = parseFloat(el.style.left) + el.offsetWidth / 2;
+            var y1 = parseFloat(el.style.top) + el.offsetHeight / 2;
+
+            from_all.forEach(to_el => {
+                indicator_correction(el, to_el, x1, y1);
+            });
+        }
+
+        function get_line_between(from, to) { // returns the line between 2 items
+            if (complete_data.get(from)["to"].get(to) == null)
+                return complete_data.get(to)["to"].get(from)
+            else
+                return complete_data.get(from)["to"].get(to)
+        }
+
+        function move_all_lines(el) {
+            let from_all = complete_data.get(el)["all"];
+            from_all.forEach(to_el => {
+                var line = complete_data.get(el)["to"].get(to_el);
+
+                if (line == null) {
+                    line = complete_data.get(to_el)["to"].get(el);
+
+                    if (line.getAttribute("data-invert"))
+                        line.setAttribute("d", `M ${parseFloat(to_el.style.left) + to_el.offsetWidth / 2} ${parseFloat(to_el.style.top) + to_el.offsetHeight / 2} L ${parseFloat(el.style.left) + el.offsetWidth / 2} ${parseFloat(el.style.top) + el.offsetHeight / 2}`);
+                    else
+                        line.setAttribute("d", `M ${parseFloat(el.style.left) + el.offsetWidth / 2} ${parseFloat(el.style.top) + el.offsetHeight / 2} L ${parseFloat(to_el.style.left) + to_el.offsetWidth / 2} ${parseFloat(to_el.style.top) + to_el.offsetHeight / 2}`);
+                }
+                else {
+                    if (line.getAttribute("data-invert"))
+                        line.setAttribute("d", `M ${parseFloat(el.style.left) + el.offsetWidth / 2} ${parseFloat(el.style.top) + el.offsetHeight / 2} L ${parseFloat(to_el.style.left) + to_el.offsetWidth / 2} ${parseFloat(to_el.style.top) + to_el.offsetHeight / 2}`);
+                    else
+                        line.setAttribute("d", `M ${parseFloat(to_el.style.left) + to_el.offsetWidth / 2} ${parseFloat(to_el.style.top) + to_el.offsetHeight / 2} L ${parseFloat(el.style.left) + el.offsetWidth / 2} ${parseFloat(el.style.top) + el.offsetHeight / 2}`);
+                }
+
+
+                // if(line.getAttribute("data-invert"))
+                //     line.setAttribute("d",`M ${parseFloat(to_el.style.left) + to_el.offsetWidth / 2} ${parseFloat(to_el.style.top)+ to_el.offsetHeight / 2} L ${parseFloat(el.style.left)+ el.offsetWidth / 2} ${parseFloat(el.style.top)+ el.offsetHeight / 2}`);
+                // else
+                //     line.setAttribute("d",`M ${parseFloat(el.style.left)+ el.offsetWidth / 2} ${parseFloat(el.style.top)+ el.offsetHeight / 2} L ${parseFloat(to_el.style.left) + to_el.offsetWidth / 2} ${parseFloat(to_el.style.top)+ to_el.offsetHeight / 2}`);
+
+            });
+        }
+
+
+        ////// profile customization //////
+        let profile_active_el = null; // points towards which profile element is currently being customized
+        function copy_profile_appearance() { // sample profile copies profile_active_el
+            profile_sample_wrapper.style.backgroundColor = profile_active_el.style.backgroundColor;
+            if (profile_active_el.style.boxShadow != "none")
+                sample_profile_shadow.checked = true;
+            else
+                sample_profile_shadow.checked = false;
+
+            profile_sample_wrapper.style.boxShadow = profile_active_el.style.boxShadow;
+            profile_text_wrapper.style.color = profile_active_el.style.color;
+
+            var profile_col = rgba2hex(profile_active_el.style.backgroundColor);
+
+            sample_profile_text_color.value = rgba2hex(profile_active_el.style.color).substring(0, 7);
+            sample_profile_color.value = profile_col.substring(0, 7);
+
+            profile_alpha.stepDown(255);
+            profile_alpha.stepUp(profile_col.length == 7 ? 255 : parseInt(profile_col.slice(-2), 16));
+
+        }
+        function hide_profile_screen() { // hides profile customizer and reflects changes made to profile item
+            profile_active_el.style.backgroundColor = profile_sample_wrapper.style.backgroundColor;
+            profile_active_el.style.color = sample_profile_text_color.value;
+            profile_active_el.style.boxShadow = profile_sample_wrapper.style.boxShadow;
+
+            set_profile_screen.classList.add("DB-screen_hidden");
+        }
+        function change_profile_text_color() { // changes profile customizer color
+            profile_text_wrapper.style.color = sample_profile_text_color.value;
+        }
+        function change_profile_color() { // changes profile customizer background color
+            profile_sample_wrapper.style.backgroundColor = sample_profile_color.value + (profile_alpha.value == 255 ? "" : parseInt(profile_alpha.value).toString(16).padStart(2, "0"));
+        }
+        function toggle_shadow() { // toggles shadow on profile customizer
+            if (sample_profile_shadow.checked)
+                profile_sample_wrapper.style.boxShadow = profile_shadow;
+            else
+                profile_sample_wrapper.style.boxShadow = "none";
+
+            // sample_profile_shadow.checked=!sample_profile_shadow.checked;
+        }
+
+        /////// frame customization //////
+        let frame_active_el = null; // points towards which frame element is currently being customized
+        let frame_mode = 0; // 0 border  1 fill
+        function copy_frame_appearance() { // sample frame copies frame_active_el
+            frame_text_wrapper.style.color = frame_active_el.style.color;
+            frame_mode = frame_active_el.classList.contains("DB-frame_fill") ? 1 : 0;
+
+            let frame_back = frame_active_el.querySelector(".DB-frame_back");
+            frame_custom_back.value = frame_back.style.backgroundImage.slice(4, -1).replace(/"/g, "");
+
+            if (frame_back.style.backgroundRepeat == "no-repeat") {
+                frame_repeat_width.value = "0";
+                frame_repeat.checked = false;
+                frame_repeat_width.disabled = true;
+            }
+            else {
+                frame_repeat_width.value = parseInt(frame_back.style.backgroundSize);
+                frame_repeat.checked = true;
+                frame_repeat_width.disabled = false;
+            }
+
+
+
+            var frame_col;
+            if (frame_mode) {
+
+                frame_sample_wrapper.style.borderColor = "rgba(0,0,0,0)";
+
+                frame_sample_wrapper.style.backgroundColor = frame_active_el.style.backgroundColor;
+
+                frame_col = rgba2hex(frame_active_el.style.backgroundColor);
+            }
+            else {
+                frame_sample_wrapper.style.backgroundColor = "rgba(0,0,0,0)";
+
+                frame_sample_wrapper.style.borderColor = frame_active_el.style.borderColor;
+
+                frame_col = rgba2hex(frame_active_el.style.borderColor);
+            }
+
+            sample_frame_text_color.value = rgba2hex(frame_active_el.style.color).substring(0, 7);
+            sample_frame_color.value = frame_col.substring(0, 7);
+
+            frame_alpha.stepDown(255);
+            frame_alpha.stepUp(frame_col.length == 7 ? 255 : parseInt(frame_col.slice(-2), 16));
+
+        }
+        function hide_frame_screen() { // hides frame customizer and reflects changes made to frame item
+            frame_active_el.style.backgroundColor = frame_sample_wrapper.style.backgroundColor;
+            frame_active_el.style.borderColor = frame_sample_wrapper.style.borderColor;
+            frame_active_el.style.color = sample_frame_text_color.value;
+
+            let frame_back = frame_active_el.querySelector(".DB-frame_back");
+            frame_back.style.opacity = parseInt(frame_alpha.value) / 255;
+
+            if (frame_mode) {
+                frame_active_el.classList.add("DB-frame_fill");
+                complete_data.get(frame_active_el)["inside"].forEach(el => {
+                    el.style.outlineColor = frame_active_el.style.backgroundColor;
+                })
+            }
+            else {
+                frame_active_el.classList.remove("DB-frame_fill");
+                complete_data.get(frame_active_el)["inside"].forEach(el => {
+                    el.style.outlineColor = frame_active_el.style.borderColor;
+                })
+            }
+
+            //background
+            if (frame_custom_back.value == "")
+                frame_back.style.backgroundImage = "none";
+            else
+                frame_back.style.backgroundImage = `url("${frame_custom_back.value}")`;
+
+            frame_back.style.backgroundRepeat = frame_repeat.checked ? "repeat" : "no-repeat";
+            if (frame_repeat.checked)
+                frame_back.style.backgroundSize = (frame_repeat_width.value == "" ? "300" : frame_repeat_width.value) + "px auto";
+            else
+                frame_back.style.backgroundSize = "100% auto";
+
+
+            set_frame_screen.classList.add("DB-screen_hidden");
+
+        }
+        function change_frame_mode() { // toggles customizer frame between different modes
+            if (frame_mode) {
+                frame_sample_wrapper.style.backgroundColor = "rgba(0,0,0,0)";
+                frame_mode = 0;
+            }
+            else {
+
+                frame_sample_wrapper.style.borderColor = "rgba(0,0,0,0)";
+                frame_mode = 1;
+            }
+            change_frame_color();
+        }
+        function change_frame_text_color() { // changes frame customizer text color
+            frame_text_wrapper.style.color = sample_frame_text_color.value;
+        }
+        function change_frame_color() { // changes frame customizer color
+            if (frame_mode)
+                frame_sample_wrapper.style.backgroundColor = sample_frame_color.value + (frame_alpha.value == 255 ? "" : parseInt(frame_alpha.value).toString(16).padStart(2, "0"));
+            else
+                frame_sample_wrapper.style.borderColor = sample_frame_color.value + (frame_alpha.value == 255 ? "" : parseInt(frame_alpha.value).toString(16).padStart(2, "0"));
+
+        }
+        function toggle_frame_repeat() { // changes if frame customizer background is to be repeated
+            frame_repeat_width.disabled = !frame_repeat.checked;
+        }
+
+
+        ////// addding new items into plane //////
+        // profile //
+        function add_new_profile(event, profile_name = "Untitled", img_url = "Images/Unknown.png", pre_mode = "textmode") { // creates new profile item
+
+            //catalogue
+            let cat_profile = document.createElement("div");
+            cat_profile.classList.add("DB-cat-thing");
+            cat_profile.classList.add("DB-cat-profile");
+            cat_profile.setAttribute('data-value', profile_name == "" ? "Untitled" : profile_name);
+            let cat_profile_icon = document.createElement("div");
+            cat_profile_icon.classList.add("DB-profile_icon");
+            cat_profile_icon.onclick = (e) => locate_el(new_profile, e.shiftKey, e.ctrlKey);
+            cat_profile.appendChild(cat_profile_icon)
+            let cat_pencil_icon = document.createElement("div");
+            cat_pencil_icon.classList.add("DB-pencil_icon");
+            cat_pencil_icon.style.visibility = "hidden";
+            cat_profile.appendChild(cat_pencil_icon);
+            catalogue_list.appendChild(cat_profile);
+
+            // thing
+            let new_profile = document.createElement("div");
+            new_profile.classList.add("DB-profile");
+            new_profile.setAttribute("data-mode", pre_mode);
+
+            new_profile.style.backgroundColor = profile_sample_wrapper.style.backgroundColor;
+            new_profile.style.color = sample_profile_text_color.value;
+            new_profile.style.boxShadow = profile_sample_wrapper.style.boxShadow;
+
+            let profile_move = document.createElement("div");
+            profile_move.classList.add("DB-profile_move");
+            profile_move.classList.add("DB-reverse_hidden");
+            profile_move.onmousedown = (e) => set_draggable(e, new_profile)
+            new_profile.appendChild(profile_move);
+
+            let profile_del = document.createElement("div");
+            profile_del.classList.add("DB-profile_del");
+            profile_del.classList.add("DB-hidden");
+            profile_del.onclick = (e) => {
+                if (delete_element(new_profile, true))
+                    cat_profile.remove();
+                e.stopPropagation()
+            };
+            profile_del.onmousedown = (e) => e.stopPropagation();
+            new_profile.appendChild(profile_del);
+
+            let profile_edit = document.createElement("div");
+            profile_edit.classList.add("DB-pencil_icon");
+            profile_edit.onclick = (e) => {
+                profile_toggle_editable(e, new_profile, profile_text);
+                cat_pencil_icon.style.visibility = (cat_pencil_icon.style.visibility == "visible" ? "hidden" : "visible");
+            };
+            profile_edit.onmousedown = (e) => e.stopPropagation();
+            new_profile.appendChild(profile_edit);
+
+            let profile_img = document.createElement("img");
+            profile_img.src = img_url;
+            profile_img.classList.add("DB-profile_img");
+            profile_img.setAttribute('draggable', false);
+            profile_img.onclick = () => show_info(new_profile);
+            new_profile.appendChild(profile_img);
+
+            let profile_text = document.createElement("textarea");
+            profile_text.classList.add("DB-profile_text");
+            profile_text.value = profile_name;
+            profile_text.tabIndex = -1;
+            profile_text.spellcheck = false;
+            profile_text.addEventListener("change", () => {
+                cat_profile.setAttribute('data-value', profile_text.value == "" ? "Untitled" : profile_text.value);
+            });
+            profile_text.onkeydown = (e) => {
+                if (e.keyCode == 13 && !e.shiftKey) {
+                    profile_edit.click();
+                    profile_text.blur();
+                    e.preventDefault();
+                }
+            }
+            profile_text.onmousedown = (e) => e.stopPropagation();
+            new_profile.appendChild(profile_text);
+
+            let join_btn = document.createElement("div");
+            join_btn.classList.add("DB-join_btn");
+            join_btn.onmousedown = (e) => join_click(e, new_profile, join_btn, false);
+            new_profile.appendChild(join_btn);
+
+            let profile_submenu = document.createElement("div");
+            profile_submenu.classList.add("DB-submenu");
+            profile_submenu.classList.add("DB-hidden");
+            new_profile.appendChild(profile_submenu);
+            profile_submenu.onclick = () => {
+                profile_active_el = new_profile;
+                copy_profile_appearance();
+                set_profile_screen.classList.remove("DB-screen_hidden")
+            };
+            profile_submenu.onmousedown = (e) => e.stopPropagation();
+
+            things_wrapper.appendChild(new_profile);
+
+            complete_data.set(new_profile, {
+                "all": [],
+                "to": new WeakMap(),
+                "info": "",
+                "images": [],
+                "frame": null
+            });
+
+            if (event != null) {
+                new_profile.style.left = -new_profile.offsetWidth / 2 - parseInt(origin.style.left) + "px";  // necessary for profile placement at the right coordinates
+                new_profile.style.top = -new_profile.offsetHeight / 2 - parseInt(origin.style.top) + "px";   //
+                event.stopPropagation();
+            }
+
+            return new_profile;
+        }
+        function profile_toggle_editable(event, profile, profile_text) { // sets profile into edit mode and reveals edit features
+
+            bring_front_back(profile, event.shiftKey, event.ctrlKey);
+
+            if (profile.classList.contains("DB-profile_editable")) { // if profile is in editable mode
+
+                correct_all_lines(profile);
+                // profile.onmousemove = null
+                profile.onmousedown = null
+                // profile.onmouseup = null
+            }
+            else { // to allow for resizing
+
+                // profile.onmousemove = (e) => e.stopPropagation();
+                profile.onmousedown = (e) => e.stopPropagation();
+                // profile.onmouseup=(e)=>e.stopPropagation();
+                profile_text.focus();
+            }
+
+            profile.classList.toggle("DB-profile_editable")
+            event.stopPropagation()
+        }
+
+        // notes //
+        function add_new_note(event, note_info = "Untitled", back_color = "#ffffff", pre_text_align = 1) { // creates new note item
+
+            //catalogue
+            let cat_note = document.createElement("div");
+            cat_note.classList.add("DB-cat-thing");
+            cat_note.classList.add("DB-cat-note");
+            cat_note.setAttribute('data-value', note_info == "" ? "Untitled" : note_info);
+            let cat_note_icon = document.createElement("div");
+            cat_note_icon.classList.add("DB-note_icon");
+            cat_note_icon.onclick = (e) => locate_el(new_note, e.shiftKey, e.ctrlKey);
+            cat_note.appendChild(cat_note_icon)
+            let cat_pencil_icon = document.createElement("div");
+            cat_pencil_icon.classList.add("DB-pencil_icon");
+            cat_pencil_icon.style.visibility = "hidden";
+            cat_note.appendChild(cat_pencil_icon);
+            catalogue_list.appendChild(cat_note);
+
+
+            const alignment = () => { //left 0  center 1  right 2  html 3
+                if (pre_text_align == 0) {
+                    new_note.classList.add("DB-note_align_center");
+                    note_text_align.classList.add("DB-align_center");
+
+                    pre_text_align = 1;
+                }
+                else if (pre_text_align == 1) {
+                    new_note.classList.remove("DB-note_align_center");
+                    note_text_align.classList.remove("DB-align_center");
+
+                    new_note.classList.add("DB-note_align_right");
+                    note_text_align.classList.add("DB-align_right");
+
+                    pre_text_align = 2;
+                }
+                else if (pre_text_align == 2) {
+                    new_note.classList.remove("DB-note_align_right");
+                    note_text_align.classList.remove("DB-align_right");
+
+                    new_note.classList.add("DB-note_html");
+                    note_text_align.classList.add("DB-align_html");
+
+                    note_html_text.innerHTML = note_text.value;
+
+                    pre_text_align = 3;
+                }
+                else if (pre_text_align == 3) {
+                    note_html_text.replaceChildren();
+                    new_note.classList.remove("DB-note_html");
+                    note_text_align.classList.remove("DB-align_html");
+                    pre_text_align = 0;
+                }
+            }
+
+            //thing
+            let new_note = document.createElement("div");
+            new_note.style.backgroundColor = back_color;
+            new_note.classList.add("DB-note");
+            if (pre_text_align != 0)
+                new_note.classList.add(`${pre_text_align == 1 ? "DB-note_align_center" : pre_text_align == 2 ? "DB-note_align_right" : pre_text_align == 3 ? "DB-note_html" : "DB-note_align_center"}`);
+
+
+            let note_move = document.createElement("div");
+            note_move.classList.add("DB-note_move");
+            note_move.classList.add("DB-reverse_hidden");
+            note_move.onmousedown = (e) => set_draggable(e, new_note)
+            new_note.appendChild(note_move);
+
+            let note_color = document.createElement("input");
+            note_color.tabIndex = -1;
+            note_color.classList.add("DB-note_color");
+            note_color.classList.add("DB-hidden");
+            note_color.type = "color";
+            note_color.value = back_color;
+
+            note_color.onmousedown = color_hold_wait;
+            note_color.onmouseup = color_cancel_hold;
+            note_color.onclick = (e) => { if (e.target.block_popup) e.preventDefault() };
+
+            note_color.oninput = () => {
+                new_note.style.backgroundColor = note_color.value;
+            }
+            new_note.appendChild(note_color);
+
+            let note_del = document.createElement("div");
+            note_del.classList.add("DB-note_del");
+            note_del.classList.add("DB-hidden");
+            note_del.onclick = (e) => {
+                if (delete_element(new_note, true))
+                    cat_note.remove();
+                e.stopPropagation()
+            };
+            note_del.onmousedown = (e) => e.stopPropagation();
+            new_note.appendChild(note_del);
+
+            let note_edit = document.createElement("div");
+            note_edit.classList.add("DB-pencil_icon");
+            note_edit.onclick = (e) => {
+                if (new_note.classList.contains("DB-note_html"))
+                    note_html_text.innerHTML = note_text.value;
+
+                note_toggle_editable(e, new_note, note_text);
+                cat_pencil_icon.style.visibility = (cat_pencil_icon.style.visibility == "visible" ? "hidden" : "visible");
+            };
+            note_edit.onmousedown = (e) => e.stopPropagation();
+            new_note.appendChild(note_edit);
+
+            let note_html_text = document.createElement("div");
+            note_html_text.classList.add("DB-note_html_text");
+            if (new_note.classList.contains("DB-note_html"))
+                note_html_text.innerHTML = note_info;
+            new_note.appendChild(note_html_text);
+
+            let note_text = document.createElement("textarea");
+            note_text.classList.add("DB-note_text");
+            note_text.value = note_info;
+            note_text.tabIndex = -1;
+            note_text.spellcheck = false;
+            note_text.onwheel = (e) => { e.stopPropagation() };
+            note_text.onkeydown = (e) => {
+                if (e.keyCode == 13 && !e.shiftKey) {
+                    note_edit.click();
+                    note_text.blur();
+                    e.preventDefault();
+                }
+            }
+            note_text.onchange = () => {
+                cat_note.setAttribute('data-value', note_text.value == "" ? "Untitled" : note_text.value);
+            }
+            new_note.appendChild(note_text);
+
+            let join_btn = document.createElement("div");
+            join_btn.classList.add("DB-join_btn");
+            join_btn.onmousedown = (e) => join_click(e, new_note, join_btn, false);
+            new_note.appendChild(join_btn);
+
+
+            let note_text_align = document.createElement("div");
+            note_text_align.classList.add("DB-note_text_align");
+            note_text_align.classList.add("DB-hidden");
+
+            if (pre_text_align != 0)
+                note_text_align.classList.add(`${pre_text_align == 1 ? "DB-align_center" : pre_text_align == 2 ? "DB-align_right" : pre_text_align == 3 ? "DB-align_html" : ""}`);
+
+            note_text_align.addEventListener("click", alignment);
+            new_note.appendChild(note_text_align);
+
+            things_wrapper.appendChild(new_note);
+
+            complete_data.set(new_note, {
+                "all": [],
+                "to": new WeakMap(),
+                "frame": null
+            });
+
+            if (event != null) {
+                event.stopPropagation();
+                new_note.style.left = -new_note.offsetWidth / 2 - parseInt(origin.style.left) + "px";
+                new_note.style.top = -new_note.offsetHeight / 2 - parseInt(origin.style.top) + "px";
+            }
+
+            return new_note;
+        }
+        function note_toggle_editable(event, note, note_text) { // sets note into edit mode and reveals edit features
+
+            bring_front_back(note, event.shiftKey, event.ctrlKey);
+
+            if (note.classList.contains("DB-note_editable")) { // if note is in editable mode
+
+                correct_all_lines(note);
+                // note.onmousemove = null;
+                note.onmousedown = null;
+                // note.onmouseup=null
+
+            }
+            else {
+
+                // note.onmousemove = (e) => e.stopPropagation();
+                note.onmousedown = (e) => e.stopPropagation();
+                // note.onmouseup=(e)=>e.stopPropagation();
+                note_text.focus();
+            }
+
+            note.classList.toggle("DB-note_editable")
+            event.stopPropagation()
+        }
+
+        // pin //
+        function add_new_pin(event, pre_type_class = "DB-pin_thumb") { // creates new pin item
+
+            //catalogue
+            let cat_pin = document.createElement("div");
+            cat_pin.classList.add("DB-cat-thing");
+            cat_pin.classList.add("DB-cat-pin");
+            cat_pin.setAttribute('data-value', "Pin");
+            let cat_pin_icon = document.createElement("div");
+            cat_pin_icon.classList.add("DB-pin_icon");
+            cat_pin_icon.onclick = (e) => locate_el(new_pin, e.shiftKey, e.ctrlKey);
+            cat_pin.appendChild(cat_pin_icon)
+            catalogue_list.appendChild(cat_pin);
+
+            //thing
+            let new_pin = document.createElement("button");
+            new_pin.classList.add("DB-pin");
+            new_pin.classList.add(pre_type_class);
+            new_pin.tabIndex = -1;
+            let to_focusout = true;
+            const pin_focusin = () => { show_elements(pin_delete, join_btn, pin_type) };
+            const pin_focusout = () => { hide_elements(pin_delete, join_btn, pin_type) };
+
+            new_pin.force_hide = pin_focusout
+
+            const pin_move = () => {
+                hide_elements(pin_delete, join_btn, pin_type);
+                new_pin.removeEventListener("mousemove", pin_move);
+            }
+
+            new_pin.addEventListener("focusin", pin_focusin);
+            new_pin.addEventListener("focusout", pin_focusout);
+            new_pin.addEventListener("mousedown", (e) => {
+                set_draggable(e, new_pin);
+                new_pin.addEventListener("mousemove", pin_move);
+            });
+            new_pin.addEventListener("mouseup", () => {
+                show_elements(pin_delete, join_btn, pin_type);
+                new_pin.removeEventListener("mousemove", pin_move);
+            });
+            new_pin.style.left = -parseInt(origin.style.left) + "px";
+            new_pin.style.top = -parseInt(origin.style.top) + "px";
+
+            let pin_delete = document.createElement("div");
+            pin_delete.classList.add("DB-pin_delete");
+            pin_delete.classList.add("DB-hidden");
+            pin_delete.onclick = (e) => {
+                if (delete_element(new_pin, true))
+                    cat_pin.remove();
+                e.stopPropagation();
+            }
+            pin_delete.onmousedown = (e) => { e.stopPropagation() }
+            new_pin.appendChild(pin_delete);
+
+            let pin_type = document.createElement("div");
+            pin_type.classList.add("DB-pin_type");
+            pin_type.classList.add("DB-hidden");
+            new_pin.p_type = pre_type_class;
+            pin_type.onclick = (e) => {
+                if (new_pin.classList.contains("DB-pin_thumb")) {
+                    new_pin.classList.remove("DB-pin_thumb");
+                    new_pin.p_type = "DB-pin_needle";
+                }
+                else if (new_pin.classList.contains("DB-pin_needle")) {
+                    new_pin.classList.remove("DB-pin_needle");
+                    new_pin.p_type = "DB-pin_location";
+                    show_elements(pin_delete, join_btn, pin_type);
+
+                    to_focusout = false;
+                }
+                else if (new_pin.classList.contains("DB-pin_location")) {
+                    new_pin.classList.remove("DB-pin_location");
+                    new_pin.p_type = "DB-pin_thumb";
+                }
+                new_pin.classList.add(new_pin.p_type);
+                e.stopPropagation();
+            }
+            pin_type.onmousedown = (e) => { e.stopPropagation() }
+            new_pin.appendChild(pin_type);
+
+            let join_btn = document.createElement("div");
+            join_btn.classList.add("DB-join_btn");
+            join_btn.classList.add("DB-hidden");
+            join_btn.onmousedown = (e) => join_click(e, new_pin, join_btn, true, pin_focusin, pin_focusout);
+            new_pin.appendChild(join_btn);
+
+            things_wrapper.appendChild(new_pin);
+
+            if (event != null) {
+                event.stopPropagation();
+                new_pin.style.left = -new_pin.offsetWidth / 2 - parseInt(origin.style.left) + "px";
+                new_pin.style.top = -new_pin.offsetHeight / 2 - parseInt(origin.style.top) + "px";
+                new_pin.focus();
+            }
+
+
+            complete_data.set(new_pin, {
+                "all": [],
+                "to": new WeakMap(),
+                "frame": null
+            });
+
+            return new_pin;
+        }
+
+        // frame //
+        function add_new_frame(event, frame_name = "Untitled", mode = 0, pre_opacity = 1, pre_background_img = "none", pre_repeat = "no-repeat", pre_back_size = "100% auto") { // creates new frame item
+
+            //catalogue
+            let cat_frame = document.createElement("div");
+            cat_frame.classList.add("DB-cat-thing");
+            cat_frame.classList.add("DB-cat-frame");
+            cat_frame.setAttribute('data-value', frame_name == "" ? "Untitled" : frame_name);
+            let cat_frame_icon = document.createElement("div");
+            cat_frame_icon.classList.add("DB-frame_icon");
+            cat_frame_icon.onclick = (e) => locate_el(new_frame, e.shiftKey, e.ctrlKey);
+            cat_frame.appendChild(cat_frame_icon)
+            let cat_pencil_icon = document.createElement("div");
+            cat_pencil_icon.classList.add("DB-pencil_icon");
+            cat_pencil_icon.style.visibility = "hidden";
+            cat_frame.appendChild(cat_pencil_icon);
+            catalogue_list.appendChild(cat_frame);
+
+            //thing
+            let new_frame = document.createElement("div");
+            new_frame.style.color = "rgb(0,0,0)";
+            new_frame.style.borderColor = "rgb(54, 54, 54)";
+            new_frame.classList.add("DB-frame");
+
+            if (mode)
+                new_frame.classList.add("DB-frame_fill");
+
+            let frame_back = document.createElement("div");
+            frame_back.classList.add("DB-frame_back");
+            frame_back.style.backgroundImage = pre_background_img;
+            frame_back.style.backgroundRepeat = pre_repeat;
+            frame_back.style.backgroundSize = pre_back_size;
+            frame_back.style.opacity = pre_opacity;
+            new_frame.appendChild(frame_back);
+
+
+            let frame_move = document.createElement("div");
+            frame_move.classList.add("DB-profile_move");
+            frame_move.classList.add("DB-reverse_hidden");
+            frame_move.onmousedown = (e) => set_draggable(e, new_frame);
+            new_frame.appendChild(frame_move);
+
+            let frame_submenu = document.createElement("div");
+            frame_submenu.classList.add("DB-submenu");
+            frame_submenu.classList.add("DB-hidden");
+            new_frame.appendChild(frame_submenu);
+            frame_submenu.onclick = () => {
+                frame_active_el = new_frame;
+                copy_frame_appearance();
+                set_frame_screen.classList.remove("DB-screen_hidden")
+            };
+
+
+            let frame_edit = document.createElement("div");
+            frame_edit.classList.add("DB-pencil_icon");
+            frame_edit.onclick = (e) => {
+                frame_toggle_editable(e, new_frame, frame_text);
+                cat_pencil_icon.style.visibility = (cat_pencil_icon.style.visibility == "visible" ? "hidden" : "visible");
+            };
+            frame_edit.onmousedown = (e) => e.stopPropagation();
+            new_frame.appendChild(frame_edit);
+
+            let frame_text = document.createElement("textarea");
+            frame_text.classList.add("DB-frame_text");
+            frame_text.value = frame_name;
+            frame_text.tabIndex = -1;
+            frame_text.spellcheck = false;
+            frame_text.addEventListener("change", () => {
+                cat_frame.setAttribute('data-value', frame_text.value == "" ? "Untitled" : frame_text.value);
+            });
+            frame_text.onkeydown = (e) => {
+                if (e.keyCode == 13 && !e.shiftKey) {
+                    frame_edit.click();
+                    frame_text.blur();
+                    e.preventDefault();
+                }
+            }
+            frame_text.onmousedown = (e) => e.stopPropagation();
+            new_frame.appendChild(frame_text);
+
+            let frame_del = document.createElement("div");
+            frame_del.classList.add("DB-frame_del");
+            frame_del.classList.add("DB-hidden");
+            frame_del.onclick = (e) => {
+                if (delete_element(new_frame, true))
+                    cat_frame.remove();
+
+                e.stopPropagation()
+            };
+            frame_del.onmousedown = (e) => e.stopPropagation();
+            new_frame.appendChild(frame_del);
+
+
+            frames_wrapper.appendChild(new_frame);
+
+            complete_data.set(new_frame, {
+                "frame": null,
+                "inside": []
+            });
+
+            if (event != null) {
+                // new_frame.style.transform='none';
+                new_frame.style.left = -new_frame.offsetWidth / 2 - parseInt(origin.style.left) + "px";
+                new_frame.style.top = -new_frame.offsetHeight / 2 - parseInt(origin.style.top) + "px";
+                event.stopPropagation();
+            }
+
+            return new_frame;
+        }
+        function frame_toggle_editable(event, frame, frame_text) { // sets frame into edit mode and reveals edit features
+
+            bring_front_back(frame, event.shiftKey, event.ctrlKey);
+
+            if (frame.classList.contains("DB-frame_editable")) { // if profile is in editable mode
+
+                // frame.onmousemove = null
+                frame.onmousedown = null
+                // frame.onmouseup = null
+            }
+            else {
+
+                // frame.onmousemove = (e) => e.stopPropagation();
+                if (_NC) // to allow for resize compatibility
+                    frame.onmousedown = (e) => {
+                        var rect = e.target.getBoundingClientRect();
+                        if ((rect.width - e.clientX + rect.left) / scale <= 20 && (rect.height - e.clientY + rect.top) / scale <= 20)
+                            e.stopPropagation()
+                    };
+                else
+                    frame.onmousedown = (e) => e.stopPropagation();
+
+                // frame.onmouseup=(e)=>e.stopPropagation();
+                frame_text.focus();
+            }
+
+            frame.classList.toggle("DB-frame_editable")
+            event.stopPropagation()
+        }
+
+
+        ////// info screen //////
+
+        // slideshow //
+        function slideshow_prev() {
+
+            if (slideshow_index == 0)
+                return 1;
+            slideshow_index--;
+            slideshow.scrollTo({
+                top: 0,
+                left: slideshow.offsetWidth * slideshow_index,
+                behavior: 'smooth'
+            });
+
+        }
+        function slideshow_next() {
+            if (slideshow_index == slideshow_length - 1)
+                return 0;
+            slideshow_index++;
+            slideshow.scrollTo({
+                top: 0,
+                left: slideshow.offsetWidth * slideshow_index,
+                behavior: 'smooth'
+            });
+
+        }
+        function slideshow_reset() {
+            slideshow_index = 0;
+            slideshow.scrollTo({
+                top: 0,
+                left: 0,
+                behavior: 'instant'
+            });
+        }
+
+        // text info //
+        function show_info(el) {
+            info_screen.classList.remove("DB-screen_hidden");
+
+            active_info_el = el;
+            slideshow_reset();
+            slideshow.replaceChildren();
+
+            let profile_data = complete_data.get(el);
+
+            if (profile_data["images"].length != 0) {
+                document.querySelector("#DB-slideshow_none").classList.add("DB-none_hidden");
+                profile_data["images"].forEach(img_src => {
+                    let pic_wrapper = document.createElement("div");
+                    pic_wrapper.classList.add("DB-pic_wrapper");
+                    let img = document.createElement("img");
+                    // img.onerror=()=>{img.style.width=0}
+                    // img.onload=()=>{img.style.width="100%"}
+                    img.src = img_src;
+                    pic_wrapper.appendChild(img);
+                    slideshow.appendChild(pic_wrapper);
+                });
+            }
+            slideshow_length = document.querySelectorAll(".DB-pic_wrapper").length;
+            if (slideshow_length == 0)
+                document.querySelector("#DB-slideshow_none").classList.remove("DB-none_hidden");
+            else
+                document.querySelector("#DB-slideshow_none").classList.add("DB-none_hidden");
+
+            name_input.value = el.querySelector("textarea").value;
+
+            if (el.getAttribute("data-mode") == "textmode") {
+                info_output.replaceChildren();
+                info_text_wrapper.classList.add("DB-info_textmode");
+            }
+            else {
+                info_output.innerHTML = profile_data["info"];
+                info_text_wrapper.classList.add("DB-info_codemode");
+            }
+
+            info_input.value = profile_data["info"];
+        }
+        function hide_info() {
+            if (info_editable)
+                toggle_info_editable();
+
+            save_info();
+            active_info_el.querySelector("textarea").value = name_input.value;
+            info_screen.classList.add("DB-screen_hidden");
+            if (info_text_wrapper.classList.contains("DB-info_textmode")) {
+                active_info_el.setAttribute("data-mode", "textmode");
+                info_text_wrapper.classList.remove("DB-info_textmode");
+            }
+            else {
+                active_info_el.setAttribute("data-mode", "codemode");
+                info_text_wrapper.classList.remove("DB-info_codemode");
+            }
+
+        }
+        function save_info(custom_el = null, name = null, info = null, images = null, note = false) {
+            if (custom_el == null) {
+                if (slideshow_length == 0)
+                    active_info_el.querySelector("img").src = "Images/Unknown.png";
+                else
+                    active_info_el.querySelector("img").src = slideshow.querySelectorAll(".DB-pic_wrapper img")[0].src;
+
+                complete_data.get(active_info_el)["info"] = info_input.value;
+            }
+            else {
+                custom_el.querySelector("textarea").value = name;
+                if (note)
+                    return;
+
+                if (images.length == 0)
+                    custom_el.querySelector("img").src = "Images/Unknown.png";
+                else
+                    custom_el.querySelector("img").src = images[0];
+
+            }
+
+        }
+
+        function toggle_info_mode() {
+
+            info_text_wrapper.classList.toggle("DB-info_textmode")
+            info_text_wrapper.classList.toggle("DB-info_codemode")
+
+            if (info_text_wrapper.classList.contains("DB-info_codemode"))
+                info_output.innerHTML = info_input.value;
+            else
+                info_output.replaceChildren();
+
+        }
+        function toggle_info_editable() {
+            if (info_editable) {
+                info_text_wrapper.classList.add("DB-info_text_uneditable");
+                if (info_text_wrapper.classList.contains("DB-info_codemode"))
+                    info_output.innerHTML = info_input.value;
+
+                save_info();
+                info_input.setAttribute("readonly", true);
+            }
+            else {
+                info_text_wrapper.classList.remove("DB-info_text_uneditable");
+                info_input.removeAttribute("readonly");
+                info_input.focus();
+            }
+
+            info_editable = !info_editable;
+        }
+        function add_img() {
+            let img_url = prompt("Enter Image Link", "");
+            if (img_url == null)
+                return;
+
+            document.querySelector("#DB-slideshow_none").classList.add("DB-none_hidden");
+
+            let profile_data = complete_data.get(active_info_el);
+            profile_data["images"].push(img_url);
+
+            let pic_wrapper = document.createElement("div");
+            pic_wrapper.classList.add("DB-pic_wrapper");
+            let img = document.createElement("img");
+            img.onerror = (e) => { img.style.width = 0 };
+            img.onload = (e) => { img.style.width = "100%" };
+            img.src = img_url;
+            pic_wrapper.appendChild(img);
+            slideshow.appendChild(pic_wrapper);
+
+            slideshow_length = document.querySelectorAll(".DB-pic_wrapper").length;
+            slideshow_index = slideshow_length - 1;
+            slideshow.scrollTo({
+                top: 0,
+                left: slideshow.offsetWidth * slideshow_index,
+                behavior: 'instant'
+            });
+
+        }
+        function replace_img() {
+            if (slideshow_length == 0)
+                return alert("No Images to Remove!");
+
+            let img_url = prompt("Enter Image Link to Replace or Keep Blank to Delete", "");
+            if (img_url == null)
+                return;
+
+            let profile_data = complete_data.get(active_info_el);
+            if (img_url == "") {
+                profile_data["images"].splice(slideshow_index, 1);
+                slideshow.querySelector(`.DB-pic_wrapper:nth-of-type(${slideshow_index + 1})`).remove();
+                slideshow_length = document.querySelectorAll(".DB-pic_wrapper").length;
+                slideshow_index -= 1;
+                if (slideshow_length == 0)
+                    document.querySelector("#DB-slideshow_none").classList.remove("DB-none_hidden");
+                slideshow.scrollTo({
+                    top: 0,
+                    left: slideshow.offsetWidth * slideshow_index,
+                    behavior: 'instant'
+                });
+            }
+            else {
+                profile_data["images"][slideshow_index] = img_url;
+                slideshow.querySelectorAll(".DB-pic_wrapper img")[slideshow_index].src = img_url;
+            }
+
+        }
+
+
+        /////// catalogue functions ///////
+        function toggle_ham(e) { // opens/closes catalogue menu
+            catalogue.classList.toggle("DB-closed");
+            e.target.classList.toggle("DB-closedham");
+        }
+        function toggle_vis(class_name) { // toggles filter of what type of items are to be seen in catalogue menu
+            catalogue.classList.toggle(class_name)
+        }
+
+
+        /////// settings functions ///////
+        function show_setting() { // shows settings screen
+            setting_screen.classList.remove("DB-screen_hidden");
+        }
+        function hide_setting() { // hides settings screen
+            setting_screen.classList.add("DB-screen_hidden");
+        }
+        function toggle_setting_option(option, index) { //toggles between different setting option screens
+            document.querySelector(".DB-setting_profile_active").classList.remove("DB-setting_profile_active");
+            document.querySelector(".DB-setting_option_active").classList.remove("DB-setting_option_active");
+
+            document.querySelector(`#DB-setting_main div:nth-of-type(${index + 1})`).classList.add("DB-setting_profile_active");
+            option.classList.add("DB-setting_option_active");
+        }
+
+        function toggle_hide_outline() { // allows user to select when to hide frame bound outline
+            if (frame_outline.value == 1)
+                body_page.classList.add("DB-hide_outline_locked");
+            else if (frame_outline.value == 2) {
+                body_page.classList.remove("DB-hide_outline_locked");
+                body_page.classList.add("DB-hide_outline_super_locked");
+            }
+            else
+                body_page.classList.remove("DB-hide_outline_super_locked");
+        }
+
+        function toggle_deselect_join() { // allows user to select when to deselect join button
+            to_deselect_join = parseInt(deselect_join.value);
+        }
+
+        function change_origin() { // changes the origin to the center of where ever the plane is currently scrolled to
+
+            let corr_loc_left = parseFloat(origin.style.left);
+            let corr_loc_top = parseFloat(origin.style.top);
+
+            let lines_list = [...lines_wrapper.querySelectorAll("path")];
+            let profiles_list = [...things_wrapper.querySelectorAll(".DB-profile")];
+            let notes_list = [...things_wrapper.querySelectorAll(".DB-note")];
+            let pins_list = [...things_wrapper.querySelectorAll(".DB-pin")];
+            let frames_list = [...frames_wrapper.querySelectorAll(".DB-frame")];
+
+
+            lines_list.forEach(line => {
+                var temp_loc = line.getAttribute("d").split(" ");
+                line.setAttribute("d", `M ${parseFloat(temp_loc[1]) + corr_loc_left} ${parseFloat(temp_loc[2]) + corr_loc_top} L ${parseFloat(temp_loc[4]) + corr_loc_left} ${parseFloat(temp_loc[5]) + corr_loc_top}`);
+            });
+
+            profiles_list.forEach(profile => {
+                var temp_loc = profile.getBoundingClientRect();
+                profile.style.left = (parseFloat(profile.style.left) + corr_loc_left) + "px";
+                profile.style.top = (parseFloat(profile.style.top) + corr_loc_top) + "px";
+            });
+
+            notes_list.forEach(note => {
+                var temp_loc = note.getBoundingClientRect();
+                note.style.left = (parseFloat(note.style.left) + corr_loc_left) + "px";
+                note.style.top = (parseFloat(note.style.top) + corr_loc_top) + "px";
+            });
+
+            pins_list.forEach(pin => {
+                var temp_loc = pin.getBoundingClientRect();
+                pin.style.left = (parseFloat(pin.style.left) + corr_loc_left) + "px";
+                pin.style.top = (parseFloat(pin.style.top) + corr_loc_top) + "px";
+            });
+
+            frames_list.forEach(frame => {
+                var temp_loc = frame.getBoundingClientRect();
+                frame.style.left = (parseFloat(frame.style.left) + corr_loc_left) + "px";
+                frame.style.top = (parseFloat(frame.style.top) + corr_loc_top) + "px";
+            })
+
+            locate_origin(false);
+            hide_setting();
+        }
+
+        // export & import //
+        function exporting_data() { // exports and saves data into json file format
+
+            let export_data = {};
+
+            let lines_list = [...lines_wrapper.querySelectorAll("path")];
+            let profiles_list = [...things_wrapper.querySelectorAll(".DB-profile")];
+            let notes_list = [...things_wrapper.querySelectorAll(".DB-note")];
+            let pins_list = [...things_wrapper.querySelectorAll(".DB-pin")];
+            let frames_list = [...frames_wrapper.querySelectorAll(".DB-frame")];
+
+
+            function get_future_id(el) {
+                if (el.classList.contains("DB-profile"))
+                    return "DB-profile" + profiles_list.indexOf(el);
+                else if (el.classList.contains("DB-note"))
+                    return "DB-note" + notes_list.indexOf(el);
+                else if (el.classList.contains("DB-pin"))
+                    return "DB-pin" + pins_list.indexOf(el);
+                else if (el.classList.contains("DB-frame"))
+                    return "DB-frame" + frames_list.indexOf(el);
+            }
+
+            lines_list.forEach(line => {
+                var temp_line_id = line.id.substring(3);
+                var line_text = lines_wrapper.querySelector(`#DB-text${temp_line_id} textPath`)
+                export_data[line.id] = {
+                    "text": line_text.innerHTML,
+                    "gap": line.getAttribute("data-gap"),
+                    "thickness": line.getAttribute("data-thickness"),
+                    "indicator": indi_from_symbol(lines_wrapper.querySelector(`#DB-text${temp_line_id} tspan`).indi_direction),
+                    "text_color": line_text.getAttribute("fill"),
+                    "line_color": line.getAttribute("stroke")
+                }
+            });
+
+            profiles_list.forEach(profile => {
+
+                var profile_data = complete_data.get(profile);
+                profile.id = profile.classList[0] + profiles_list.indexOf(profile);
+
+                export_data[profile.id] = {
+                    "to": {},
+                    "name": profile.querySelector("textarea").value,
+                    "info": profile_data["info"],
+                    "images": profile_data["images"],
+                    "mode": profile.getAttribute("data-mode"),
+                    "frame": profile_data["frame"] == null ? null : get_future_id(profile_data["frame"]),
+                    "meta": {
+                        "height": profile.clientHeight + "px",
+                        "boxShadow": profile.style.boxShadow,
+                        "backgroundColor": profile.style.backgroundColor,
+                        "color": profile.style.color,
+                        "width": profile.clientWidth + "px",
+                        "left": profile.style.left,
+                        "top": profile.style.top,
+                    }
+                }
+
+                profile_data["all"].forEach(el => { //attaches "to" lines
+                    var line = profile_data["to"].get(el);
+                    if (line != null)
+                        line = line.id;
+
+                    export_data[profile.id]["to"][get_future_id(el)] = line;
+                })
+            });
+
+            notes_list.forEach(note => {
+
+                var note_data = complete_data.get(note);
+                note.id = note.classList[0] + notes_list.indexOf(note);
+
+                export_data[note.id] = {
+                    "to": {},
+                    "info": note.querySelector("textarea").value,
+                    "backcolor": note.querySelector(".DB-note_color").value,
+                    "align": note.classList.contains("DB-note_align_center") ? 1 : note.classList.contains("DB-note_align_right") ? 2 : note.classList.contains("DB-note_html") ? 3 : 0,
+                    "frame": note_data["frame"] == null ? null : get_future_id(note_data["frame"]),
+                    "meta": {
+                        "height": note.clientHeight + "px",
+                        "width": note.clientWidth + "px",
+                        "left": note.style.left,
+                        "top": note.style.top,
+                    }
+                }
+
+                note_data["all"].forEach(el => {
+                    var line = note_data["to"].get(el);
+                    if (line != null)
+                        line = line.id;
+
+                    export_data[note.id]["to"][get_future_id(el)] = line;
+                })
+            });
+
+            pins_list.forEach(pin => {
+
+                var pin_data = complete_data.get(pin);
+                pin.id = pin.classList[0] + pins_list.indexOf(pin);
+
+                export_data[pin.id] = {
+                    "to": {},
+                    "type": pin.p_type,
+                    "frame": pin_data["frame"] == null ? null : get_future_id(pin_data["frame"]),
+                    "meta": {
+                        "left": pin.style.left,
+                        "top": pin.style.top,
+                    }
+                }
+
+                pin_data["all"].forEach(el => {
+                    var line = pin_data["to"].get(el);
+                    if (line != null)
+                        line = line.id;
+
+                    export_data[pin.id]["to"][get_future_id(el)] = line;
+                })
+            });
+
+            frames_list.forEach(frame => {
+
+                var frame_data = complete_data.get(frame);
+                frame.id = frame.classList[0] + frames_list.indexOf(frame)
+
+                let goup_back = frame.querySelector(".DB-frame_back");
+                export_data[frame.id] = {
+                    "name": frame.querySelector(".DB-frame_text").value,
+                    "mode": (frame.classList.contains("DB-frame_fill") ? 1 : 0),
+                    "img": goup_back.style.backgroundImage,
+                    "img_repeat": goup_back.style.backgroundRepeat,
+                    "img_size": goup_back.style.backgroundSize,
+                    "img_opacity": goup_back.style.opacity,
+                    "frame": frame_data["frame"] == null ? null : get_future_id(frame_data["frame"]),
+                    "inside": [],
+                    "meta": {
+                        "color": frame.style.color,
+                        "backgroundColor": frame.style.backgroundColor,
+                        "borderColor": frame.style.borderColor,
+                        "height": frame.offsetHeight + "px",
+                        "width": frame.offsetWidth + "px",
+                        "left": frame.style.left,
+                        "top": frame.style.top
+                    }
+                }
+
+                frame_data["inside"].forEach(el => {
+                    export_data[frame.id]["inside"].push(get_future_id(el));
+                });
+            })
+
+            export_data = {
+                "title": title_input.value,
+                "components": export_data,
+                "custom_css": custom_css.value,
+                "frame_outline": frame_outline.selectedIndex,
+                "deselect_join": deselect_join.selectedIndex
+            };
+
+            var data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(export_data));
+            let a = document.createElement('a');
+            a.href = 'data:' + data;
+            a.download = `virtual_bulletin_board_data.json`;
+            a.click();
+            a.remove();
+        }
+
+        function confirm_import(e) { // confimation before actually importing 
+            if (!confirm("Are you sure you want to import?\nAll previous data will be erased!"))
+                return;
+            import_selector.click();
+            e.preventDefault();
+        }
+        function importing_data(e) { // formailites for importing 
+            let file = e.target.files[0];
+            e.target.value = '';
+            if (file == undefined)
+                return;
+
+            hide_setting();
+            loading.classList.remove("hide_loading"); //to remove loading on complete
+
+            let reader = new FileReader(file);
+
+            reader.onload = async (e) => {
+                try {
+                    import_data = await JSON.parse(e.target.result);
+                    console.log("Imported Data=>", import_data);
+                    set_import_data();
+                }
+                catch {
+                    alert("Invalid Import File");
+                }
+                loading.classList.add("hide_loading"); //to remove loading on complete
+            }
+
+            reader.readAsText(file);
+
+        }
+        function set_import_data(override_data = null, to_lock=true) { // this is where the importing magic actually happens, takes json file as input
+            if(to_lock)
+               toggle_lock(true);
+
+
+            /// before adding things ///
+            if (override_data != null)
+                import_data = override_data;
+
+            title.innerText = (import_data["title"] == "" ? "UNTITLED" : import_data["title"]);
+            title_input.value = import_data["title"];
+
+            if (import_data["custom_css"] != undefined) {
+                custom_css.value = import_data["custom_css"];
+                custom_style.innerHTML = import_data["custom_css"];
+            }
+
+            frame_outline.selectedIndex = import_data["frame_outline"];
+            toggle_hide_outline();
+
+            deselect_join.selectedIndex = import_data["deselect_join"]
+            toggle_deselect_join()
+
+            /// adding things ///
+            import_data = import_data["components"];
+
+            lines_wrapper.replaceChildren();
+            things_wrapper.replaceChildren();
+            frames_wrapper.replaceChildren();
+            catalogue_list.replaceChildren();
+
+            complete_data = new WeakMap();
+            line_latest = 0;
+
+            for (thing_id in import_data) {
+                if (thing_id.startsWith("DB-line"))
+                    continue;
+
+                let thing = recreate_thing(thing_id, import_data[thing_id]);
+                let thing_data = complete_data.get(thing);
+
+                /// creating parent frame ///
+                let new_frame_id = import_data[thing_id]["frame"];
+
+                if (new_frame_id) {
+
+                    let parent_frame = recreate_thing(
+                        import_data[thing_id]["frame"], //frame Id
+                        import_data[import_data[thing_id]["frame"]]); //frame data
+
+                    thing.classList.add("DB-frame_placed");
+                    thing.style.outlineColor = parent_frame.style.borderColor;
+
+                    thing_data["frame"] = parent_frame;
+                }
+                else
+                    thing_data["frame"] = null;
+
+                ///
+
+                if (thing_id.startsWith("DB-frame")) {
+
+                    //creating inside frame
+                    import_data[thing_id]["inside"].forEach(inside_el_id => {
+                        let child_thing = recreate_thing(inside_el_id, import_data[inside_el_id])
+                        child_thing.classList.add("DB-frame_placed");
+                        child_thing.style.outlineColor = thing.style.borderColor;
+
+                        thing_data["inside"].push(child_thing);
+                    });
+
+                    continue;
+                }
+
+                if (!("to" in import_data[thing_id])) continue;
+
+                if (thing_id.startsWith("DB-profile")) {
+                    thing_data["name"] = import_data[thing_id]["name"];
+                    thing_data["info"] = import_data[thing_id]["info"];
+                    thing_data["images"] = import_data[thing_id]["images"];
+                }
+
+
+                for (to_el_id in import_data[thing_id]["to"]) {
+                    let to_el = recreate_thing(to_el_id, import_data[to_el_id]);
+
+                    if (import_data[thing_id]["to"][to_el_id] == null)
+                        thing_data["to"].set(to_el, null);
+                    else {
+                        var line_id = import_data[thing_id]["to"][to_el_id];
+                        var line = add_line(thing, to_el,
+                            import_data[line_id]["text"],
+                            import_data[line_id]["gap"],
+                            import_data[line_id]["thickness"],
+                            import_data[line_id]["indicator"],
+                            import_data[line_id]["text_color"],
+                            import_data[line_id]["line_color"]);
+
+                        thing_data["to"].set(to_el, line);
+                    }
+
+                    thing_data["all"].push(to_el);
+                }
+
+            }
+
+            locate_origin(false);
+        }
+        function recreate_thing(thing_id, thing_data) { // creates items as specified in import file
+
+            let thing = document.getElementById(thing_id);
+            if (thing != null)
+                return thing;
+
+            if (thing_id.startsWith("DB-profile"))
+                thing = add_new_profile(null, thing_data["name"], thing_data["images"].length == 0 ? undefined : thing_data["images"][0], thing_data["mode"]);
+            else if (thing_id.startsWith("DB-note"))
+                thing = add_new_note(null, thing_data["info"], thing_data["backcolor"], thing_data["align"]);
+            else if (thing_id.startsWith("DB-pin"))
+                thing = add_new_pin(null, thing_data["type"]);
+            else if (thing_id.startsWith("DB-frame"))
+                thing = add_new_frame(null, thing_data["name"], thing_data["mode"], thing_data["img_opacity"], thing_data["img"], thing_data["img_repeat"], thing_data["img_size"]);
+
+            thing.id = thing_id;
+
+            for (style_attr in import_data[thing_id]["meta"])
+                thing.style[style_attr] = import_data[thing_id]["meta"][style_attr];
+
+            return thing;
+
+        }
+
+        // custom css functions //
+        const custom_css_changed = () => { // indicates when user assigned css has been changed and actives save custom css button 
+            custom_css.removeEventListener("input", custom_css_changed);
+            custom_css_btn.removeAttribute("disabled");
+        }
+        function set_custom_css() {  // sets custom css data as assigned by user
+            custom_css.addEventListener("input", custom_css_changed);
+            custom_css_btn.setAttribute("disabled", true);
+            custom_style.innerHTML = custom_css.value;
+            hide_setting();
+        }
+
+        // demo //
+        function show_demo() { // shows what the board can do via demo
+            if (confirm("Are you sure you want to see the demo?\nAll previous progress will be erased!")) {
+                if (demo_data == undefined) {
+                    alert("index_demo_data.js file missing")
+                    return
+                }
+                set_import_data(demo_data);
+                hide_setting();
+            }
+        }
+
+
+        ////// window functions //////
+        window.onload = () => {
+            let details = navigator.userAgent;
+            let regexp = /android|iphone|kindle|ipad/i;
+
+            let isMobileDevice = regexp.test(details);
+
+            if (isMobileDevice) {
+                window.location = window.location.href + "/Unavailable";
+                return;
+            }
+
+            reset_origin(false);
+            custom_css.addEventListener("input", custom_css_changed);
+
+            // check if chrome //
+            if (navigator.userAgent.indexOf("Chrome") == -1) {
+                body_page.classList.add("DB-NC")
+                _NC = true;
+                zoom_out = 0.063
+            }
+
+            loading.classList.add("hide_loading"); //to remove loading on complete
+        };
+        window.onbeforeunload = (e) => {
+            e = e || window.event;
+            if (e) { e.returnValue = 'Sure?'; }
+            return 'Sure?';
+        }
+        window.onresize = () => {
+            reset_origin(false, false);
+            slideshow.scrollTo({
+                top: 0,
+                left: slideshow.offsetWidth * slideshow_index,
+                behavior: 'instant'
+            });
+        };
+
+
+        ////// document functions //////
+        document.onmousedown = (e) => grab(e, origin, true); //
+        document.onmouseup = (e) => release(e, origin);      // to move the entire plane
+        document.onwheel = zoom; // to zoom in/out of the entire plane
+
+        let intro_data={"title":"","components":{"DB-note0":{"to":{},"info":"<span style=\"position:relative;top:50%;transform:translate(0, -50%)\">\nFor a Demo, go to the Settings\n<span style=\"position:relative\">\n<div class=\"DB-gear\"  style=\"transform:translate(0,-50%);display:inline;left:1rem\">\n  <div></div>\n</div>\n</span>\n</span>","backcolor":"#ffffff","align":3,"frame":null,"meta":{"height":"212px","width":"357px","left":"-176.075px","top":"-120.113px"}}},"custom_css":"","frame_outline":0,"deselect_join":1}
+        set_import_data(intro_data, false);
+    
+    </script>
+</body>
+
+</html>
